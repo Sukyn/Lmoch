@@ -24,12 +24,14 @@
 	"mod", MOD;
 	"node", NODE;
 	"not", NOT;
+  "when", WHEN;
 	"or", OR;
         "pre", PRE;
 	"real", REAL;
 	"returns", RETURNS;
 	"tel", TEL;
 	"then", THEN;
+  "fby", FBY;
 	"true", CONST_BOOL(true);
 	"var", VAR;
       ];

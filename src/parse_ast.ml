@@ -14,6 +14,8 @@ and p_expr_desc =
   | PE_op of op * p_expr list
   | PE_app of ident * p_expr list
   | PE_arrow of p_expr * p_expr
+  | PE_fby of p_expr * p_expr
+  | PE_when of p_expr * p_expr
   | PE_pre of p_expr
   | PE_tuple of p_expr list
 

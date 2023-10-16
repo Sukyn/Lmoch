@@ -2,6 +2,9 @@
 
 open Asttypes
 
+type ck =
+  | Cbase 
+
 type typed_var = Ident.t * base_ty
 
 type t_expr =
@@ -16,6 +19,8 @@ and t_expr_desc =
   | TE_app of Ident.t * t_expr list
   | TE_prim of Ident.t * t_expr list
   | TE_arrow of t_expr * t_expr
+  | TE_fby of t_expr * t_expr
+  | TE_when of t_expr * t_expr
   | TE_pre of t_expr
   | TE_tuple of t_expr list
 

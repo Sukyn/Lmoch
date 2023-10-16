@@ -49,6 +49,10 @@ let rec print_exp fmt e = match e.texpr_desc with
       fprintf fmt "%a(@[%a@])" Ident.print name print_arg_list e_list
   | TE_arrow (l, r) ->
       fprintf fmt "@[(@[%a@]) -> (@[%a@])@]" print_exp l print_exp r
+  | TE_fby (l, r) ->
+      fprintf fmt "@[(@[%a@]) fby (@[%a@])@]" print_exp l print_exp r
+  | TE_when (l, x) ->
+      fprintf fmt "@[(@[%a@]) when (@[%a@])@]" print_exp l print_exp x
   | TE_pre e ->
       fprintf fmt "pre (@[%a@])" print_exp e
   | TE_tuple e_list ->

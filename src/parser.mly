@@ -37,6 +37,7 @@
 %token NODE
 %token NOT
 %token OR
+%token FBY
 %token PLUS
 %token PRE
 %token RETURNS
@@ -46,6 +47,7 @@
 %token STAR
 %token TEL
 %token THEN
+%token WHEN
 %token VAR
 
 
@@ -62,7 +64,7 @@
 %nonassoc NOT PRE                             /* not pre */
 %left DOT
 
-/* Point d'entrée */
+/* Point d'entrï¿½e */
 
 %start file
 %type <Parse_ast.p_file> file
@@ -164,6 +166,8 @@ expr:
     { mk_expr (PE_op (Op_if, [$2; $4; $6])) }
 | expr PLUS expr
     { mk_expr (PE_op (Op_add, [$1; $3])) }
+| expr WHEN expr
+    { mk_expr (PE_when ($1, $3)) }
 | expr MINUS expr
     { mk_expr (PE_op (Op_sub, [$1; $3])) }
 | expr STAR expr
@@ -188,6 +192,8 @@ expr:
     { mk_expr (PE_op (Op_impl, [$1; $3])) }
 | expr ARROW expr
     { mk_expr (PE_arrow ($1, $3)) }
+| expr FBY expr
+    { mk_expr (PE_fby ($1, $3)) }
 | MINUS expr /* %prec uminus */
     { mk_expr (PE_op (Op_sub, [$2])) }
 | NOT expr

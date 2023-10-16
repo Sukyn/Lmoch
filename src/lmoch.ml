@@ -70,12 +70,13 @@ let () =
     if !type_only then exit 0;
     if main_node = "" then exit 0;
 
+    let ct = Clocking.clock_file ft main_node in
     (* XXX TODO XXX *)
     Format.printf "/**************************************/@.";
     Format.printf "/* Simplified version                 */@.";
     Format.printf "/**************************************/@.";
-    let lusb = Lus2lusb.tr_program ft main_node in
-    Typed_ast_printer.print_node_list_std lusb;
+    let lusb = Lus2lusb.tr_program ct main_node in
+    Lusb_ast_printer.print_node_list_std lusb;
 
   
 

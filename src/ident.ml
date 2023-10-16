@@ -1,12 +1,14 @@
+
+type kind = 
+  | Stream
+  | Node
+  | Prim
+
 type t =
     { id: int;
       name: string;
       kind: kind; }
 
-and kind =
-  | Stream
-  | Node
-  | Prim
 
 let make =
   let cpt = ref 0 in

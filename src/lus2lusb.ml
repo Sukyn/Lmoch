@@ -2,6 +2,7 @@ open Lusb_ast
 open Ident 
 open Asttypes
 open Typed_ast 
+open Clocking
 
 exception Invalid_behavior of string
 
@@ -113,7 +114,7 @@ let rec tr_expr loc = function
                                     | Const (Cint 0) -> tr_expr loc m.texpr_desc
                                     | _ -> Ope (o, List.map (fun v -> tr_ex v) l)
                                     )
-        | _, _ -> raise (Invalid_behavior "Operation not found")
+        | _ -> raise (Invalid_behavior "Operation not found")
         )
   | Typed_ast.TE_app (x, l) -> App (x, List.map (fun v -> tr_ex v) l)
   | Typed_ast.TE_prim (x, l) -> Prim (x, List.map (fun v -> tr_ex v) l)
@@ -129,6 +130,11 @@ let rec tr_expr loc = function
                                                                    texpr_loc  = loc;});
                                                 texpr_type = [Tbool];
                                                 texpr_loc  = loc; }; tr_ex e; tr_ex e']))
+  | Typed_ast.TE_fby (e, e') -> (match tr_expr loc e.texpr_desc, tr_expr loc e'.texpr_desc with 
+                                  | (n, m) when n = m -> n
+                                  | _ -> Fby(tr_ex e, tr_ex e')
+                                )
+  | Typed_ast.TE_when (e, x) -> When(tr_ex e, tr_ex x)
   | Typed_ast.TE_pre e -> (match tr_expr loc e.texpr_desc with 
                           | Const n -> Const n
                           | _ ->  Fby({ texpr_desc = Nil;
@@ -159,12 +165,12 @@ let tr_eq eq =
 
 let tr_node n = 
 
-    let name = n.tn_name in
-    let input = n.tn_input in
-    let output = n.tn_output in
-    let local = n.tn_local in 
-    let equs = List.map (fun eq -> tr_eq eq) n.tn_equs in
-    let loc = n.tn_loc in
+    let name = n.cn_name in
+    let input = n.cn_input in
+    let output = n.cn_output in
+    let local = n.cn_local in 
+    let equs = List.map (fun eq -> tr_eq eq) n.cn_equs in
+    let loc = n.cn_loc in
     let node = 
     { t_name = name;
       t_input = input;
