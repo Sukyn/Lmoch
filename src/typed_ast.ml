@@ -20,7 +20,8 @@ and t_expr_desc =
   | TE_prim of Ident.t * t_expr list
   | TE_arrow of t_expr * t_expr
   | TE_fby of t_expr * t_expr
-  | TE_when of t_expr * t_expr
+  | TE_when of t_expr * Ident.t
+  | TE_whenot of t_expr * Ident.t
   | TE_pre of t_expr
   | TE_tuple of t_expr list
 

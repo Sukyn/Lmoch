@@ -73,7 +73,7 @@ let () =
     let ct = Clocking.clock_file ft main_node in
     (* XXX TODO XXX *)
     Format.printf "/**************************************/@.";
-    Format.printf "/* Simplified version                 */@.";
+    Format.printf "/* Simplified + clocked version       */@.";
     Format.printf "/**************************************/@.";
     let lusb = Lus2lusb.tr_program ct main_node in
     Lusb_ast_printer.print_node_list_std lusb;

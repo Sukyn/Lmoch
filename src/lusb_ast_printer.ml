@@ -47,7 +47,8 @@ let rec print_exp fmt e = match e.texpr_desc with
   | App (name, e_list) | Prim (name, e_list) ->
       fprintf fmt "%a(@[%a@])" Ident.print name print_arg_list e_list
   | Fby (e,e') -> fprintf fmt "(%a) fby (%a)" print_exp e print_exp e' 
-  | When (e,x) -> fprintf fmt "(%a) when (%a)" print_exp e print_exp x
+  | When (e,x) -> fprintf fmt "(%a) when (%a)" print_exp e Ident.print x
+  | Whenot (e,x) -> fprintf fmt "(%a) when not (%a)" print_exp e Ident.print x
   | Tuple e_list ->
       fprintf fmt "(@[%a@])" print_tuple_arg_list e_list
 

@@ -42,32 +42,6 @@ module Kappa = struct
         C.find x env
 end
 
-let rec clock_vars v env = function 
-  |  [] -> []
-  |  a::l -> (match a.texpr_desc with
-  | TE_const c -> []
-  | TE_ident x -> (match v with 
-                 | T -> [True(x)]
-                 | F -> [False(x)])
-  | TE_op (Op_not, l) -> (match v with 
-                    | T -> clock_vars F env l
-                    | F -> clock_vars T env l
-                    ) 
-  | TE_op (o, l) -> clock_vars v env l
-  | TE_app (f,args) -> clock_vars v env args
-  | TE_prim (f,args) -> clock_vars v env args
-  | TE_arrow (e, e') -> clock_vars v env [e] @ clock_vars v env [e']
-  | TE_fby (e, e') -> clock_vars v env [e] @ clock_vars v env [e']
-  | TE_when (e, e') -> clock_vars v env [e] @ clock_vars v env [e']
-  | TE_pre e -> clock_vars v env [e]
-  | TE_tuple l -> clock_vars v env l
-    )@(clock_vars v env l)
-
-let rec create_clock = function 
-    | [] -> Sing(Cbase)
-    | [x] -> Sing(Ccon (x))
-    | e::l -> Mul([Sing(Ccon (e))]@[create_clock l])
-
 let rec clock_eq env k = (match k.texpr_desc with
   | TE_const c -> Sing(Cbase)
   | TE_ident x -> Kappa.find x env
@@ -76,9 +50,8 @@ let rec clock_eq env k = (match k.texpr_desc with
   | TE_prim (f,args) -> Sing(Cbase) (* Check they are same *)
   | TE_arrow (e, e') -> clock_eq env e'
   | TE_fby (e, e') -> clock_eq env e'
-  | TE_when (e, e') -> let vars = clock_vars T env [e'] in
-                       create_clock vars
-
+  | TE_when (e, x) -> Sing(Ccon (True(x)))
+  | TE_whenot (e, x) -> Sing(Ccon (False(x)))
   | TE_pre e -> clock_eq env e
   | TE_tuple l -> Sing(Cbase) (* Check they are same *)
 )

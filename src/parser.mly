@@ -166,7 +166,9 @@ expr:
     { mk_expr (PE_op (Op_if, [$2; $4; $6])) }
 | expr PLUS expr
     { mk_expr (PE_op (Op_add, [$1; $3])) }
-| expr WHEN expr
+| expr WHEN NOT IDENT
+    { mk_expr (PE_whenot ($1, $4)) }
+| expr WHEN IDENT
     { mk_expr (PE_when ($1, $3)) }
 | expr MINUS expr
     { mk_expr (PE_op (Op_sub, [$1; $3])) }

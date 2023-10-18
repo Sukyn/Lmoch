@@ -351,10 +351,22 @@ and type_expr_desc env loc = function
       else error te2.texpr_loc (ExpectedType (ty2, ty1))
 
   | PE_when (e1, x) ->
-      let te2 = expected_type env x [Tbool] in
+      let te, ty, _ = Gamma.find loc env x in 
+      let well_typed = compatible_base ty Tbool in
       let te1 = type_expr env e1 in
       let ty1 = te1.texpr_type in
-	  TE_when (te1, te2), ty1
+      if well_typed then
+	  TE_when (te1, te), ty1
+    else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+
+  | PE_whenot (e1, x) ->
+      let te, ty, _ = Gamma.find loc env x in 
+      let well_typed = compatible_base ty Tbool in
+      let te1 = type_expr env e1 in
+      let ty1 = te1.texpr_type in
+      if well_typed then
+	  TE_whenot (te1, te), ty1
+    else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
 
   | PE_pre e ->
       let te = type_expr env e in

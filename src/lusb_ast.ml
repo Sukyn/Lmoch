@@ -14,7 +14,8 @@ and t_expr_desc_l =
   | App of Ident.t * t_expr_l list
   | Prim of Ident.t * t_expr_l list
   | Fby of t_expr_l * t_expr_l
-  | When of t_expr_l * t_expr_l
+  | When of t_expr_l * Ident.t
+  | Whenot of t_expr_l * Ident.t
   | Tuple of t_expr_l list
 
 type t_patt =

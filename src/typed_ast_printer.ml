@@ -52,7 +52,9 @@ let rec print_exp fmt e = match e.texpr_desc with
   | TE_fby (l, r) ->
       fprintf fmt "@[(@[%a@]) fby (@[%a@])@]" print_exp l print_exp r
   | TE_when (l, x) ->
-      fprintf fmt "@[(@[%a@]) when (@[%a@])@]" print_exp l print_exp x
+      fprintf fmt "@[(@[%a@]) when (@[%a@])@]" print_exp l Ident.print x
+  | TE_whenot (l, x) ->
+      fprintf fmt "@[(@[%a@]) when not (@[%a@])@]" print_exp l Ident.print x
   | TE_pre e ->
       fprintf fmt "pre (@[%a@])" print_exp e
   | TE_tuple e_list ->
