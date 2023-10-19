@@ -22,6 +22,7 @@ and t_expr_desc =
   | TE_fby of t_expr * t_expr
   | TE_when of t_expr * Ident.t
   | TE_whenot of t_expr * Ident.t
+  | TE_merge of Ident.t * t_expr * t_expr
   | TE_pre of t_expr
   | TE_tuple of t_expr list
 

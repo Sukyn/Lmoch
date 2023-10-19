@@ -55,6 +55,8 @@ let rec print_exp fmt e = match e.texpr_desc with
       fprintf fmt "@[(@[%a@]) when (@[%a@])@]" print_exp l Ident.print x
   | TE_whenot (l, x) ->
       fprintf fmt "@[(@[%a@]) when not (@[%a@])@]" print_exp l Ident.print x
+  | TE_merge (x, e1, e2) ->
+      fprintf fmt "merge %a (%a) (%a)" Ident.print x print_exp e1 print_exp e2
   | TE_pre e ->
       fprintf fmt "pre (@[%a@])" print_exp e
   | TE_tuple e_list ->

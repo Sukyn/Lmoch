@@ -39,7 +39,7 @@ let print_op fmt op = match op with
   | Op_impl -> fprintf fmt "impl"
   | Op_if -> fprintf fmt "ite"
 
-let rec print_exp fmt e = match e.texpr_desc with
+let rec print_exp fmt e = match e with
   | Nil -> fprintf fmt "nil"
   | Const c -> print_const fmt c
   | Id x -> fprintf fmt "%a" Ident.print x
@@ -49,6 +49,7 @@ let rec print_exp fmt e = match e.texpr_desc with
   | Fby (e,e') -> fprintf fmt "(%a) fby (%a)" print_exp e print_exp e' 
   | When (e,x) -> fprintf fmt "(%a) when (%a)" print_exp e Ident.print x
   | Whenot (e,x) -> fprintf fmt "(%a) when not (%a)" print_exp e Ident.print x
+  | Merge (x, e1, e2) -> fprintf fmt "merge %a (%a) (%a)" Ident.print x print_exp e1 print_exp e2
   | Tuple e_list ->
       fprintf fmt "(@[%a@])" print_tuple_arg_list e_list
 
@@ -70,7 +71,7 @@ and print_const_exp fmt ce_list = match ce_list with
 let print_eq fmt eq =
   fprintf fmt "@[(%a) = @[%a@]@]"
     (print_list Ident.print ",") eq.eq_patt.patt_desc
-    print_exp eq.eq_expr
+    print_exp eq.eq_expr.ttexpr_desc
 
 let print_base_type fmt bty = match bty with
   | Tbool -> fprintf fmt "bool"

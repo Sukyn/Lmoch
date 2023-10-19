@@ -40,6 +40,7 @@
 %token FBY
 %token PLUS
 %token PRE
+%token MERGE
 %token RETURNS
 %token RPAREN
 %token SEMICOL
@@ -164,6 +165,8 @@ expr:
     { mk_expr (PE_app ($1, $3))}
 | IF expr THEN expr ELSE expr
     { mk_expr (PE_op (Op_if, [$2; $4; $6])) }
+| MERGE IDENT expr expr
+    { mk_expr (PE_merge ($2, $3, $4)) }
 | expr PLUS expr
     { mk_expr (PE_op (Op_add, [$1; $3])) }
 | expr WHEN NOT IDENT

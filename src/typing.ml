@@ -368,6 +368,20 @@ and type_expr_desc env loc = function
 	  TE_whenot (te1, te), ty1
     else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
 
+  | PE_merge (x, e1, e2) ->
+      let te, ty, _ = Gamma.find loc env x in 
+      let well_typed = compatible_base ty Tbool in
+      let te1 = type_expr env e1 in
+      let ty1 = te1.texpr_type in
+      if well_typed then
+        let te2 = type_expr env e2 in
+        let ty2 = te2.texpr_type in
+        let well_typed_b = well_typed && compatible ty1 ty2 in
+        if well_typed_b then 
+         TE_merge (te, te1, te2), ty1
+        else error te2.texpr_loc (ExpectedType (ty2, ty1))
+      else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+
   | PE_pre e ->
       let te = type_expr env e in
       TE_pre te, te.texpr_type

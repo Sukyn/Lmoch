@@ -18,6 +18,12 @@ type alternate =
 
 type clocked_var = Ident.t * Asttypes.base_ty * ct
 
+type error =
+  | Invalid_clock of Typed_ast.t_expr * Typed_ast.t_expr
+
+exception Error of error
+
+let error e = raise (Error (e))
 
 type c_node =
     { cn_name: Ident.t;
@@ -52,6 +58,12 @@ let rec clock_eq env k = (match k.texpr_desc with
   | TE_fby (e, e') -> clock_eq env e'
   | TE_when (e, x) -> Sing(Ccon (True(x)))
   | TE_whenot (e, x) -> Sing(Ccon (False(x)))
+  | TE_merge (x, e1, e2) -> if clock_eq env e1 = Sing(Ccon (True(x))) && clock_eq env e2 = Sing(Ccon (False(x)))
+                            then Kappa.find x env
+                            else
+                            (if clock_eq env e1 = Sing(Ccon (False(x))) && clock_eq env e2 = Sing(Ccon (True(x)))
+                            then Kappa.find x env
+                            else error (Invalid_clock (e1, e2)))
   | TE_pre e -> clock_eq env e
   | TE_tuple l -> Sing(Cbase) (* Check they are same *)
 )

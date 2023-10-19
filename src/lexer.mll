@@ -22,6 +22,7 @@
 	"int", INT;
 	"let", LET;
 	"mod", MOD;
+  "merge", MERGE;
 	"node", NODE;
 	"not", NOT;
   "when", WHEN;

@@ -17,6 +17,7 @@ and p_expr_desc =
   | PE_fby of p_expr * p_expr
   | PE_when of p_expr * ident
   | PE_whenot of p_expr * ident
+  | PE_merge of ident * p_expr * p_expr
   | PE_pre of p_expr
   | PE_tuple of p_expr list
 
