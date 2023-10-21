@@ -19,7 +19,7 @@ type alternate =
 type clocked_var = Ident.t * Asttypes.base_ty * ct
 
 type error =
-  | Invalid_clock of Typed_ast.t_expr * Typed_ast.t_expr
+  | Invalid_clock
 
 exception Error of error
 
@@ -51,21 +51,31 @@ end
 let rec clock_eq env k = (match k.texpr_desc with
   | TE_const c -> Sing(Cbase)
   | TE_ident x -> Kappa.find x env
-  | TE_op (o, l) -> Sing(Cbase) (* Check they are same *)
-  | TE_app (f,args) -> Sing(Cbase) (* Check they are same *)
-  | TE_prim (f,args) -> Sing(Cbase) (* Check they are same *)
+  | TE_op (o, l) -> if List.for_all (fun x -> clock_eq env x = clock_eq env (List.hd l)) (List.tl l) then 
+                    clock_eq env (List.hd l)
+                    else error (Invalid_clock)
+  | TE_app (f,args) -> if List.for_all (fun x -> clock_eq env x = clock_eq env (List.hd args)) (List.tl args) then 
+                        clock_eq env (List.hd args)
+                        else error (Invalid_clock)
+  | TE_prim (f,args) -> if List.for_all (fun x -> clock_eq env x = clock_eq env (List.hd args)) (List.tl args) then 
+                        clock_eq env (List.hd args)
+                        else error (Invalid_clock)
   | TE_arrow (e, e') -> clock_eq env e'
   | TE_fby (e, e') -> clock_eq env e'
-  | TE_when (e, x) -> Sing(Ccon (True(x)))
-  | TE_whenot (e, x) -> Sing(Ccon (False(x)))
+  | TE_when (e, x) -> if clock_eq env e = Kappa.find x env then Sing(Ccon (True(x)))
+                        else error (Invalid_clock)
+  | TE_whenot (e, x) -> if clock_eq env e = Kappa.find x env then Sing(Ccon (False(x)))
+                        else error (Invalid_clock)
   | TE_merge (x, e1, e2) -> if clock_eq env e1 = Sing(Ccon (True(x))) && clock_eq env e2 = Sing(Ccon (False(x)))
                             then Kappa.find x env
                             else
                             (if clock_eq env e1 = Sing(Ccon (False(x))) && clock_eq env e2 = Sing(Ccon (True(x)))
                             then Kappa.find x env
-                            else error (Invalid_clock (e1, e2)))
+                            else error (Invalid_clock))
   | TE_pre e -> clock_eq env e
-  | TE_tuple l -> Sing(Cbase) (* Check they are same *)
+  | TE_tuple l -> if List.for_all (fun x -> clock_eq env x = clock_eq env (List.hd l)) (List.tl l) then 
+                    clock_eq env (List.hd l)
+                    else error (Invalid_clock)
 )
 
 let clock_equation env eq = 
