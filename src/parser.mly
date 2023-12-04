@@ -3,9 +3,8 @@
   open Asttypes
   open Parse_ast
 
-  let loc () = symbol_start_pos (), symbol_end_pos ()
-  let mk_expr e = { pexpr_desc = e; pexpr_loc = loc () }
-  let mk_patt p = { ppatt_desc = p; ppatt_loc = loc () }
+  let mk_expr l e = { pexpr_desc = e; pexpr_loc = l }
+  let mk_patt l p = { ppatt_desc = p; ppatt_loc = l }
 
 %}
 
@@ -49,6 +48,7 @@
 %token TEL
 %token THEN
 %token WHEN
+%token WHENOT
 %token VAR
 
 
@@ -63,6 +63,7 @@
 %left STAR SLASH DIV MOD                      /* * /  mod */
 %nonassoc uminus                              /* - */
 %nonassoc NOT PRE                             /* not pre */
+%right FBY
 %left DOT
 
 /* Point d'entr�e */
@@ -91,7 +92,7 @@ node:
 	pn_output = $8;
 	pn_local = $11;
 	pn_equs = $13;
-	pn_loc = loc(); } }
+	pn_loc = $sloc; } }
 ;
 
 in_params:
@@ -149,9 +150,9 @@ eq:
 
 pattern:
 | IDENT
-    { mk_patt (PP_ident $1) }
+    { mk_patt $sloc (PP_ident $1) }
 | LPAREN IDENT COMMA ident_comma_list RPAREN
-    { mk_patt (PP_tuple($2::$4)) }
+    { mk_patt $sloc (PP_tuple($2::$4)) }
 ;
 
 expr:
@@ -160,62 +161,62 @@ expr:
 | const
     { $1 }
 | IDENT
-    { mk_expr (PE_ident $1)}
+    { mk_expr $sloc (PE_ident $1)}
 | IDENT LPAREN expr_comma_list_empty RPAREN
-    { mk_expr (PE_app ($1, $3))}
+    { mk_expr $sloc (PE_app ($1, $3))}
 | IF expr THEN expr ELSE expr
-    { mk_expr (PE_op (Op_if, [$2; $4; $6])) }
+    { mk_expr $sloc (PE_op (Op_if, [$2; $4; $6])) }
 | MERGE IDENT expr expr
-    { mk_expr (PE_merge ($2, $3, $4)) }
+    { mk_expr $sloc (PE_merge ($2, $3, $4)) }
 | expr PLUS expr
-    { mk_expr (PE_op (Op_add, [$1; $3])) }
-| expr WHEN NOT IDENT
-    { mk_expr (PE_whenot ($1, $4)) }
+    { mk_expr $sloc (PE_op (Op_add, [$1; $3])) }
+| expr WHENOT IDENT
+    { mk_expr $sloc (PE_whenot ($1, $3)) }
 | expr WHEN IDENT
-    { mk_expr (PE_when ($1, $3)) }
+    { mk_expr $sloc (PE_when ($1, $3)) }
 | expr MINUS expr
-    { mk_expr (PE_op (Op_sub, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_sub, [$1; $3])) }
 | expr STAR expr
-    { mk_expr (PE_op (Op_mul, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_mul, [$1; $3])) }
 | expr SLASH expr
-    { mk_expr (PE_op (Op_div, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_div, [$1; $3])) }
 | expr DIV expr
-    { mk_expr (PE_op (Op_div, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_div, [$1; $3])) }
 | expr MOD expr
-    { mk_expr (PE_op (Op_mod, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_mod, [$1; $3])) }
 | expr COMP expr
-    { mk_expr (PE_op ($2, [$1; $3])) }
+    { mk_expr $sloc (PE_op ($2, [$1; $3])) }
 | expr EQUAL expr
-    { mk_expr (PE_op (Op_eq, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_eq, [$1; $3])) }
 | expr NEQ expr
-    { mk_expr (PE_op (Op_neq, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_neq, [$1; $3])) }
 | expr AND expr
-    { mk_expr (PE_op (Op_and, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_and, [$1; $3])) }
 | expr OR expr
-    { mk_expr (PE_op (Op_or, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_or, [$1; $3])) }
 | expr IMPL expr
-    { mk_expr (PE_op (Op_impl, [$1; $3])) }
+    { mk_expr $sloc (PE_op (Op_impl, [$1; $3])) }
 | expr ARROW expr
-    { mk_expr (PE_arrow ($1, $3)) }
+    { mk_expr $sloc (PE_arrow ($1, $3)) }
 | expr FBY expr
-    { mk_expr (PE_fby ($1, $3)) }
+    { mk_expr $sloc (PE_fby ($1, $3)) }
 | MINUS expr /* %prec uminus */
-    { mk_expr (PE_op (Op_sub, [$2])) }
+    { mk_expr $sloc (PE_op (Op_sub, [$2])) }
 | NOT expr
-    { mk_expr (PE_op (Op_not, [$2])) }
+    { mk_expr $sloc (PE_op (Op_not, [$2])) }
 | PRE expr
-    { mk_expr (PE_pre ($2)) }
+    { mk_expr $sloc (PE_pre ($2)) }
 | LPAREN expr COMMA expr_comma_list RPAREN
-    { mk_expr (PE_tuple ($2::$4)) }
+    { mk_expr $sloc (PE_tuple ($2::$4)) }
 ;
 
 const:
 | CONST_BOOL
-    { mk_expr (PE_const (Cbool $1)) }
+    { mk_expr $sloc (PE_const (Cbool $1)) }
 | CONST_INT
-    { mk_expr (PE_const (Cint $1)) }
+    { mk_expr $sloc (PE_const (Cint $1)) }
 | CONST_REAL
-    { mk_expr (PE_const (Creal $1)) }
+    { mk_expr $sloc (PE_const (Creal $1)) }
 ;
 
 ident_comma_list:

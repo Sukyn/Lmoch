@@ -12,6 +12,7 @@ let usage = "usage: "^Sys.argv.(0)^" [options] file.lus main"
 let parse_only = ref false
 let type_only = ref false
 let norm_only = ref false
+let schedule_only = ref false
 let lucy_printer = ref false
 let ocaml_printer = ref true
 let verbose = ref false
@@ -20,6 +21,7 @@ let spec =
   ["-parse-only", Arg.Set parse_only, "  stops after parsing";
    "-type-only", Arg.Set type_only, "  stops after typing";
    "-norm-only", Arg.Set norm_only, "  stops after normalization";
+   "-sched-only", Arg.Set schedule_only, "  stops after scheduling";
    "-verbose", Arg.Set verbose, "print intermediate transformations";
    "-v", Arg.Set verbose, "print intermediate transformations";
   ]
@@ -70,16 +72,32 @@ let () =
     if !type_only then exit 0;
     if main_node = "" then exit 0;
 
-    let ct = Clocking.clock_file ft main_node in
-    (* XXX TODO XXX *)
-    Format.printf "/**************************************/@.";
-    Format.printf "/* Simplified + clocked version       */@.";
-    Format.printf "/**************************************/@.";
-    let lusb = Lus2lusb.tr_program ct main_node in
-    Lusb_ast_printer.print_node_list_std lusb;
+    let lusnorm = Lus2lusb.tr_program ft main_node in
+    if !verbose then begin
+      Format.printf "/**************************************/@.";
+      Format.printf "/* Normalised version                 */@.";
+      Format.printf "/**************************************/@.";
+      Typed_ast_printer.print_node_list_std lusnorm;
+    end;
+    if !norm_only then exit 0;
 
-  
+    (*
+    let ct = Clocking.clock_file lusnorm main_node in
+    if !verbose then begin
+      Format.printf "/**************************************/@.";
+      Format.printf "/* Clocked version                    */@.";
+      Format.printf "/**************************************/@.";
+      Clocked_ast_printer.print_node_list_std ct;
+    end;
+    *)
 
+    (*
+    let ft = Compile.compile ft in
+    let file_c = open_out (Format.sprintf "%s.c" (Filename.remove_extension file)) in
+    let out = Format.formatter_of_out_channel file_c in
+    Compile.write_out ft out;
+    close_out file_c;
+    *)
     exit 0
   with
     | Lexical_error s ->

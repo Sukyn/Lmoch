@@ -1,211 +1,208 @@
-open Lusb_ast
-open Ident 
-open Asttypes
 open Typed_ast 
-open Clocking
+open Asttypes
 
 exception Invalid_behavior of string
 
+let nil loc = function
+  | Tbool -> { texpr_desc= TE_const (Cbool false);
+               texpr_type=  [Tbool];
+               texpr_loc= loc; }
+  | Tint -> { texpr_desc= TE_const (Cint 0);
+              texpr_type=  [Tint];
+              texpr_loc= loc; }
+  | Treal -> { texpr_desc= TE_const (Creal 0.0);
+              texpr_type=  [Treal];
+              texpr_loc= loc; }
+
 let rec tr_expr_op = function 
-    | Const n -> Const n 
-    | Id x -> Id x 
-    | Ope(o, l) -> (match o, List.map tr_expr_op l with 
+    | TE_const n -> TE_const n 
+    | TE_ident x -> TE_ident x 
+    | TE_op(o, l) -> (match o, l with 
     
-        | Op_eq, [n; m]  -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i = j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i = j))
-                                    | Const (Cbool i), Const (Cbool j) -> Const (Cbool (i = j))
-                                    | Const (Cbool true), e -> tr_expr_op e
-                                    | e, Const (Cbool true) -> tr_expr_op e
-                                    | Const (Cbool false), e -> tr_expr_op (Ope (Op_not, [m]))
-                                    | e, Const (Cbool false) -> tr_expr_op (Ope (Op_not, [n]))
-                                    | e, e' -> if e = e' then Const (Cbool true) 
-                                               else if e = Ope(Op_not, [e']) || e' = Ope(Op_not, [e]) then Const (Cbool false)
-                                               else Ope (o, [n; m])
+        | Op_eq, [n; m]  -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i = j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i = j))
+                                    | TE_const (Cbool i), TE_const (Cbool j) -> TE_const (Cbool (i = j))
+                                    | TE_const (Cbool true), e -> tr_expr_op e
+                                    | e, TE_const (Cbool true) -> tr_expr_op e
+                                    | TE_const (Cbool false), e -> tr_expr_op (TE_op (Op_not, [{m with texpr_desc = e}]))
+                                    | e, TE_const (Cbool false) -> tr_expr_op (TE_op (Op_not, [{n with texpr_desc = e}]))
+                                    | e, e' -> if e = e' then TE_const (Cbool true) 
+                                               else if e = TE_op(Op_not, [{m with texpr_desc = e'}]) || e' = TE_op(Op_not, [{n with texpr_desc = e}]) then TE_const (Cbool false)
+                                               else TE_op (o, [n; m])
                                     )              
-        | Op_neq, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i <> j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i <> j))
-                                    | Const (Cbool i), Const (Cbool j) -> Const (Cbool (i <> j))
-                                    | Const (Cbool false), e -> tr_expr_op e
-                                    | e, Const (Cbool false) -> tr_expr_op e
-                                    | Const (Cbool true), e -> tr_expr_op (Ope (Op_not, [m]))
-                                    | e, Const (Cbool true) -> tr_expr_op (Ope (Op_not, [n]))
-                                    | _ -> Ope (o, [n; m])
+        | Op_neq, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i <> j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i <> j))
+                                    | TE_const (Cbool i), TE_const (Cbool j) -> TE_const (Cbool (i <> j))
+                                    | TE_const (Cbool false), e -> tr_expr_op e
+                                    | e, TE_const (Cbool false) -> tr_expr_op e
+                                    | TE_const (Cbool true), e -> tr_expr_op (TE_op (Op_not, [{m with texpr_desc = e}]))
+                                    | e, TE_const (Cbool true) -> tr_expr_op (TE_op (Op_not, [{n with texpr_desc = e}]))
+                                    | _ -> TE_op (o, [n; m])
                                     )     
-        | Op_lt, [n; m]  -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i < j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i < j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_lt, [n; m]  -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i < j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i < j))
+                                    | _ -> TE_op (o, [n; m])
                                     ) 
-        | Op_le, [n; m]  -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i <= j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i <= j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_le, [n; m]  -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i <= j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i <= j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_gt, [n; m]  -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i > j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i > j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_gt, [n; m]  -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i > j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i > j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_ge, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cbool (i >= j))
-                                    | Const (Creal i), Const (Creal j) -> Const (Cbool (i >= j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_ge, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cbool (i >= j))
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Cbool (i >= j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_add, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cint (i+j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_add, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cint (i+j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_sub, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cint (i-j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_sub, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cint (i-j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_mul, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cint (i*j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_mul, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cint (i*j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_div, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cint (i/j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_div, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cint (i/j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_mod, [n; m] -> (match n, m with 
-                                    | Const (Cint i), Const (Cint j) -> Const (Cint (i mod j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_mod, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cint i), TE_const (Cint j) -> TE_const (Cint (i mod j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_add_f, [n; m] -> (match n, m with 
-                                    | Const (Creal i), Const (Creal j) -> Const (Creal (i+.j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_add_f, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Creal (i+.j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_sub_f, [n; m] -> (match n, m with 
-                                    | Const (Creal i), Const (Creal j) -> Const (Creal (i-.j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_sub_f, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Creal (i-.j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_mul_f, [n; m] -> (match n, m with 
-                                    | Const (Creal i), Const (Creal j) -> Const (Creal (i*.j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_mul_f, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Creal (i*.j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_div_f, [n; m] -> (match n, m with 
-                                    | Const (Creal i), Const (Creal j) -> Const (Creal (i/.j))
-                                    | _ -> Ope (o, [n; m])
+        | Op_div_f, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Creal i), TE_const (Creal j) -> TE_const (Creal (i/.j))
+                                    | _ -> TE_op (o, [n; m])
                                     )
-        | Op_not, [n] -> (match n with 
-                                    | Const (Cbool i) -> Const (Cbool (not i))
-                                    | Ope(Op_not, [e]) -> tr_expr_op e
-                                    | Ope(Op_or, [n; m]) -> tr_expr_op (Ope(Op_and, [Ope(Op_not, [n]); Ope(Op_not, [m]);]))
-                                    | Ope(Op_and, [n; m]) -> tr_expr_op (Ope(Op_or, [Ope(Op_not, [n]); Ope(Op_not, [m]);]))
-                                    | _ -> Ope (o, [n])
+        | Op_not, [n] -> (match n.texpr_desc with 
+                                    | TE_const (Cbool i) -> TE_const (Cbool (not i))
+                                    | TE_op(Op_not, [e]) -> tr_expr_op e.texpr_desc
+                                    | TE_op(Op_or, [n; m]) -> tr_expr_op (TE_op(Op_and, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [n]))}; { m with texpr_desc = tr_expr_op (TE_op(Op_not, [m]))};]))
+                                    | TE_op(Op_and, [n; m]) -> tr_expr_op (TE_op(Op_or, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [n]))}; { m with texpr_desc = tr_expr_op (TE_op(Op_not, [m]))};]))
+                                    | _ -> TE_op (o, [n])
                                     )
-        | Op_and, [n; m] -> (match n, m with 
-                                    | Const (Cbool i), Const (Cbool j) -> Const (Cbool (i && j))
-                                    | Const (Cbool true), n -> n
-                                    | Const (Cbool false), _ -> Const (Cbool false)
-                                    | n, Const (Cbool true) -> n
-                                    | _, Const (Cbool false) -> Const (Cbool false)
+        | Op_and, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cbool i), TE_const (Cbool j) -> TE_const (Cbool (i && j))
+                                    | TE_const (Cbool true), n -> n
+                                    | TE_const (Cbool false), _ -> TE_const (Cbool false)
+                                    | n, TE_const (Cbool true) -> n
+                                    | _, TE_const (Cbool false) -> TE_const (Cbool false)
                                     | n', m' -> if n' = m' then n' 
-                                                else if n' = Ope(Op_not, [m']) || m' = Ope(Op_not, [n']) then Const (Cbool false)
-                                                else Ope (o, [n; m])
+                                                else if n' = TE_op(Op_not, [{m with texpr_desc = m'}]) || m' = TE_op(Op_not, [{n with texpr_desc = n'}]) then TE_const (Cbool false)
+                                                else TE_op (o, [{n with texpr_desc = n'}; {m with texpr_desc = m'}])
                                     )
-        | Op_or, [n; m] -> (match n, m with 
-                                    | Const (Cbool i), Const (Cbool j) -> Const (Cbool (i || j))
-                                    | Const (Cbool false), n -> n
-                                    | Const (Cbool true), _ -> Const (Cbool true)
-                                    | n, Const (Cbool false) -> n
-                                    | _, Const (Cbool true) -> Const (Cbool true)
+        | Op_or, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cbool i), TE_const (Cbool j) -> TE_const (Cbool (i || j))
+                                    | TE_const (Cbool false), n -> n
+                                    | TE_const (Cbool true), _ -> TE_const (Cbool true)
+                                    | n, TE_const (Cbool false) -> n
+                                    | _, TE_const (Cbool true) -> TE_const (Cbool true)
                                     | n', m' -> if n' = m' then n' 
-                                                else if n' = Ope(Op_not, [m']) || m' = Ope(Op_not, [n']) then Const (Cbool true)
-                                                else Ope (o, [n; m])
+                                                else if n' = TE_op(Op_not, [{m with texpr_desc = m'}]) || m' = TE_op(Op_not, [{n with texpr_desc = n'}]) then TE_const (Cbool true)
+                                                else TE_op (o, [{n with texpr_desc = n'}; {m with texpr_desc = m'}])
                                     )
-        | Op_impl, [n; m] -> (match n, m with 
-                                    | Const (Cbool i), Const (Cbool j) -> Const (Cbool ((not i) || j))
-                                    | Const (Cbool false), _ -> Const (Cbool true) 
-                                    | Const (Cbool true), n -> n
-                                    | n, Const (Cbool false) -> Ope(Op_not, [n])
-                                    | _, Const (Cbool true) -> Const (Cbool true)
-                                    | n', m' -> if n' = m' then Const (Cbool true)
-                                                            else tr_expr_op (Ope(Op_or, [Ope (Op_not, [n]); m]))
+        | Op_impl, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
+                                    | TE_const (Cbool i), TE_const (Cbool j) -> TE_const (Cbool ((not i) || j))
+                                    | TE_const (Cbool false), _ -> TE_const (Cbool true) 
+                                    | TE_const (Cbool true), n -> n
+                                    | n', TE_const (Cbool false) -> TE_op(Op_not, [{n with texpr_desc = n'}])
+                                    | _, TE_const (Cbool true) -> TE_const (Cbool true)
+                                    | n', m' -> if n' = m' then TE_const (Cbool true)
+                                                            else tr_expr_op (TE_op(Op_or, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [{n with texpr_desc = n'}]))}; {m with texpr_desc = m'}]))
                                     )
-        | Op_if, [b; n; m] -> (match b with 
-                                    | Const (Cbool true) -> n
-                                    | Const (Cbool false) -> m
-                                    | b' -> (match n, m with 
-                                            | Const (Cbool false), Const (Cbool false) -> Const (Cbool false)
-                                            | Const (Cbool false), Const (Cbool true) -> tr_expr_op (Ope (Op_not, [b]))
-                                            | Const (Cbool true), Const (Cbool true) -> Const (Cbool true)
-                                            | Const (Cbool true), Const (Cbool false) -> b'
-                                            | Const (Cbool false), e -> if e = b' then Const (Cbool false)
-                                                                        else tr_expr_op (Ope(Op_and, [Ope (Op_not, [b]); m]))
-                                            | e, Const (Cbool true) -> if e = b' then Const (Cbool true)
-                                                                       else tr_expr_op (Ope(Op_or, [Ope (Op_not, [b]); n]))
-                                            | Const (Cbool true), e -> if e = b' then e
-                                                                       else tr_expr_op (Ope(Op_or, [b; m]))
-                                            | e, Const (Cbool false) -> if e = b' then e
-                                                                        else tr_expr_op (Ope(Op_and, [b; n]))
-                                            | _ -> Ope (o, [n; m])
+        | Op_if, [b; n; m] -> (match b.texpr_desc with 
+                                    | TE_const (Cbool true) -> n.texpr_desc
+                                    | TE_const (Cbool false) -> m.texpr_desc
+                                    | b' -> (match n.texpr_desc, m.texpr_desc with 
+                                            | TE_const (Cbool false), TE_const (Cbool false) -> TE_const (Cbool false)
+                                            | TE_const (Cbool false), TE_const (Cbool true) -> tr_expr_op (TE_op (Op_not, [{b with texpr_desc = b'}]))
+                                            | TE_const (Cbool true), TE_const (Cbool true) -> TE_const (Cbool true)
+                                            | TE_const (Cbool true), TE_const (Cbool false) -> b'
+                                            | TE_const (Cbool false), e -> if e = b' then TE_const (Cbool false)
+                                                                        else tr_expr_op (TE_op(Op_and, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [b]))}; {m with texpr_desc = e}]))
+                                            | e, TE_const (Cbool true) -> if e = b' then TE_const (Cbool true)
+                                                                       else tr_expr_op (TE_op(Op_or, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [b]))}; {n with texpr_desc = e}]))
+                                            | TE_const (Cbool true), e -> if e = b' then e
+                                                                       else tr_expr_op (TE_op(Op_or, [{b with texpr_desc = b'}; {m with texpr_desc = e}]))
+                                            | e, TE_const (Cbool false) -> if e = b' then e
+                                                                        else tr_expr_op (TE_op(Op_and, [{b with texpr_desc = b'}; {n with texpr_desc = e}]))
+                                            | _ -> TE_op (o, [n; m])
                                     )
                                     )
-            | _, _ -> raise (Invalid_behavior "Operation not found")
+          | x, y -> raise (Invalid_behavior "TE_operation not found")
         )
-        | _ -> raise (Invalid_behavior "Operation not found")
+        | x -> raise (Invalid_behavior "TE_operation not found")
 
 and tr_expr = function
-  | Typed_ast.TE_const n -> Const n 
-  | Typed_ast.TE_ident x -> Id x
-  | Typed_ast.TE_op (o, l) -> tr_expr_op (Ope(o, (List.map (fun v -> tr_expr v.texpr_desc) l)))
-  | Typed_ast.TE_merge (x, e, e') -> Merge(x, tr_expr e.texpr_desc, tr_expr e'.texpr_desc)
-  | Typed_ast.TE_app (x, l) -> App (x, List.map (fun v -> tr_expr v.texpr_desc) l)
-  | Typed_ast.TE_prim (x, l) -> Prim (x, List.map (fun v -> tr_expr v.texpr_desc) l)
+  | Typed_ast.TE_const n -> TE_const n 
+  | Typed_ast.TE_ident x -> TE_ident x
+  | Typed_ast.TE_op (o, l) -> tr_expr_op (TE_op(o, l))
+  | Typed_ast.TE_merge (x, e, e') -> TE_merge(x, {e with texpr_desc = tr_expr e.texpr_desc}, {e' with texpr_desc = tr_expr e'.texpr_desc})
+  | Typed_ast.TE_app (x, l) -> TE_app (x, List.map (fun v -> {v with texpr_desc = tr_expr v.texpr_desc}) l)
+  | Typed_ast.TE_prim (x, l) -> TE_prim (x, List.map (fun v -> {v with texpr_desc = tr_expr v.texpr_desc}) l)
   | Typed_ast.TE_arrow (e, e') -> (match tr_expr e.texpr_desc, tr_expr e'.texpr_desc with 
                                   | (n, m) when n = m -> n
-                                  | eb, eb' -> tr_expr_op (Ope(Op_if, [Fby(Const (Cbool true), Const (Cbool false)); eb; eb'])))
+                                  | eb, eb' -> tr_expr_op (TE_op(Op_if, [
+                                    { texpr_desc=
+                                       TE_fby(
+                                      { texpr_desc= TE_const (Cbool true);
+                                        texpr_type=  [Tbool];
+                                        texpr_loc= e.texpr_loc; },
+                                      { texpr_desc= TE_const (Cbool false);
+                                        texpr_type=  [Tbool];
+                                        texpr_loc= e.texpr_loc; });
+                                        texpr_type=  [Tbool];
+                                        texpr_loc= e.texpr_loc; }
+                                        ; e; e'])))
   | Typed_ast.TE_fby (e, e') -> (match tr_expr e.texpr_desc, tr_expr e'.texpr_desc with 
                                   | (n, m) when n = m -> n
-                                  | eb, eb' -> Fby(eb, eb')
+                                  | eb, eb' -> TE_fby(e, e')
                                 )
-  | Typed_ast.TE_when (e, x) -> When(tr_expr e.texpr_desc, x)
-  | Typed_ast.TE_whenot (e, x) -> Whenot(tr_expr e.texpr_desc, x)
+  | Typed_ast.TE_when (e, x) -> TE_when({e with texpr_desc = tr_expr e.texpr_desc}, x)
+  | Typed_ast.TE_whenot (e, x) -> TE_whenot({e with texpr_desc = tr_expr e.texpr_desc}, x)
   | Typed_ast.TE_pre e -> (match tr_expr e.texpr_desc with 
-                          | Const n -> Const n
-                          | eb ->  Fby(Nil, eb))
-  | Typed_ast.TE_tuple l -> Tuple (List.map (fun v -> tr_expr v.texpr_desc) l)
+                          | TE_const n -> TE_const n
+                          | eb ->  TE_fby(nil e.texpr_loc (List.hd e.texpr_type), {e with texpr_desc = eb}))
+  | Typed_ast.TE_tuple l -> TE_tuple (List.map (fun v -> {v with texpr_desc = tr_expr v.texpr_desc}) l)
   
 
 and tr_ex eq = 
-    let l = eq.texpr_loc in 
-    let vd = tr_expr eq.texpr_desc in
-    { ttexpr_desc = vd;
-      texpr_type = eq.texpr_type;
-      texpr_loc = l;}
+    { eq with texpr_desc = tr_expr eq.texpr_desc;
+    }
 
 let tr_eq eq =
-    let expr = eq.teq_expr in 
-    let t = eq.teq_patt in
-    let p = 
-    { patt_desc = t.tpatt_desc;
-      patt_type = t.tpatt_type;
-      patt_loc = t.tpatt_loc; } in
-
-    { eq_expr = tr_ex expr; 
-      eq_patt = p;}
+    { eq with teq_expr = tr_ex eq.teq_expr; 
+    }
 
 
 let tr_node n = 
 
-    let name = n.cn_name in
-    let input = n.cn_input in
-    let output = n.cn_output in
-    let local = n.cn_local in 
-    let equs = List.map (fun eq -> tr_eq eq) n.cn_equs in
-    let loc = n.cn_loc in
-    let node = 
-    { t_name = name;
-      t_input = input;
-      t_output = output;
-      t_local = local;
-      t_equs = equs;
-      t_loc = loc; }
-    in 
-    node
+    { n with 
+      tn_equs = List.map (fun eq -> tr_eq eq) n.tn_equs;
+     }
 
 let tr_program prog main = 
     let lusb = List.map tr_node prog in 

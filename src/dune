@@ -1,0 +1,13 @@
+(ocamllex
+ (modules lexer))
+
+(menhir
+ (modules parser)
+ (flags
+  (-v --explain)))
+
+(executable
+  (name lmoch)
+  (libraries unix goblint-cil)
+  (promote (until-clean))
+  (flags (-w -33)))
