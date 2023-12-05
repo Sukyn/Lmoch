@@ -159,21 +159,22 @@ expr:
 | LPAREN expr RPAREN
     { $2 }
 | const
-    { $1 }
+    { mk_expr $sloc (PE_const $1) }
 | IDENT
     { mk_expr $sloc (PE_ident $1)}
 | IDENT LPAREN expr_comma_list_empty RPAREN
     { mk_expr $sloc (PE_app ($1, $3))}
 | IF expr THEN expr ELSE expr
     { mk_expr $sloc (PE_op (Op_if, [$2; $4; $6])) }
-| MERGE IDENT expr expr
-    { mk_expr $sloc (PE_merge ($2, $3, $4)) }
+| MERGE IDENT list(merge_branche)
+    {   let ident = mk_expr $loc($2) (PE_ident $2) in
+        mk_expr $sloc (PE_merge (ident, $3)) }
 | expr PLUS expr
     { mk_expr $sloc (PE_op (Op_add, [$1; $3])) }
-| expr WHENOT IDENT
-    { mk_expr $sloc (PE_whenot ($1, $3)) }
-| expr WHEN IDENT
-    { mk_expr $sloc (PE_when ($1, $3)) }
+| expr WHENOT expr
+    { mk_expr $sloc (PE_when ($1, false, $3)) }
+| expr WHEN expr
+    { mk_expr $sloc (PE_when ($1, true, $3)) }
 | expr MINUS expr
     { mk_expr $sloc (PE_op (Op_sub, [$1; $3])) }
 | expr STAR expr
@@ -210,13 +211,17 @@ expr:
     { mk_expr $sloc (PE_tuple ($2::$4)) }
 ;
 
+merge_branche:
+ LPAREN const ARROW expr RPAREN { (mk_expr $loc($2) (PE_const $2), $4) }
+;
+
 const:
 | CONST_BOOL
-    { mk_expr $sloc (PE_const (Cbool $1)) }
+    { (Cbool $1) }
 | CONST_INT
-    { mk_expr $sloc (PE_const (Cint $1)) }
+    { (Cint $1) }
 | CONST_REAL
-    { mk_expr $sloc (PE_const (Creal $1)) }
+    { (Creal $1) }
 ;
 
 ident_comma_list:

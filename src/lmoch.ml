@@ -91,13 +91,19 @@ let () =
     end;
     *)
 
-    (*
-    let ft = Compile.compile ft in
+    
+    
+    if !verbose then begin
+      Format.printf "/**************************************/@.";
+      Format.printf "/* C version                          */@.";
+      Format.printf "/**************************************/@.";
+    end;
+    let ft = Compile.compile lusnorm in
     let file_c = open_out (Format.sprintf "%s.c" (Filename.remove_extension file)) in
     let out = Format.formatter_of_out_channel file_c in
     Compile.write_out ft out;
     close_out file_c;
-    *)
+    
     exit 0
   with
     | Lexical_error s ->

@@ -41,6 +41,12 @@ let print_op fmt op = match op with
   | Op_impl -> fprintf fmt "impl"
   | Op_if -> fprintf fmt "ite"
 
+let rec print_list_nl f fmt l = match l with
+  | [] -> ()
+  | [x] -> f fmt x
+  | h :: t -> fprintf fmt "%a@\n%a" f h (print_list_nl f) t
+
+
 let rec print_exp fmt e = match e.texpr_desc with
   | TE_const c -> print_const fmt c
   | TE_ident x -> fprintf fmt "%a" Ident.print x
@@ -51,12 +57,10 @@ let rec print_exp fmt e = match e.texpr_desc with
       fprintf fmt "@[(@[%a@]) -> (@[%a@])@]" print_exp l print_exp r
   | TE_fby (l, r) ->
       fprintf fmt "@[(@[%a@]) fby (@[%a@])@]" print_exp l print_exp r
-  | TE_when (l, x) ->
-      fprintf fmt "@[(@[%a@]) when (@[%a@])@]" print_exp l Ident.print x
-  | TE_whenot (l, x) ->
-      fprintf fmt "@[(@[%a@]) when not (@[%a@])@]" print_exp l Ident.print x
-  | TE_merge (x, e1, e2) ->
-      fprintf fmt "merge %a (%a) (%a)" Ident.print x print_exp e1 print_exp e2
+  | TE_when (l, x, r) ->
+      fprintf fmt "@[%a when %b(%a)@]" print_exp l x print_exp r
+  | TE_merge (x, l) ->
+      fprintf fmt "@[merge %a @\n  @[%a@]@]" print_exp x (print_list_nl (fun fmt (id,exp) -> fprintf fmt "(%a -> %a)" print_exp id print_exp exp)) l
   | TE_pre e ->
       fprintf fmt "pre (@[%a@])" print_exp e
   | TE_tuple e_list ->

@@ -27,9 +27,10 @@ let rec add_vars_of_exp s {texpr_desc=e} =
   | TE_ident x -> S.add x s
   | TE_arrow (e1, e2) -> add_vars_of_exp (add_vars_of_exp s e1) e2
   | TE_fby (e1, e2) -> add_vars_of_exp (add_vars_of_exp s e1) e2
-  | TE_when (e1, x) -> S.add x (add_vars_of_exp s e1)
-  | TE_whenot (e1, x) -> S.add x (add_vars_of_exp s e1)
-  | TE_merge (x, e1, e2) -> S.add x (add_vars_of_exp (add_vars_of_exp s e1) e2)
+  | TE_when (e1, x, e2) -> add_vars_of_exp (add_vars_of_exp s e1) e2
+  | TE_merge (x, l) -> List.fold_left (fun acc (_, e) -> add_vars_of_exp acc e)
+                        (add_vars_of_exp s x)
+                         l
   | TE_pre e -> s
   | TE_op (_, el) -> List.fold_left (fun s e -> add_vars_of_exp s e) s el
   | TE_app (_,l) -> List.fold_left add_vars_of_exp s l

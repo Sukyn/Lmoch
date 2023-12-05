@@ -347,40 +347,75 @@ and type_expr_desc env loc = function
       let ty2 = te2.texpr_type in
       let well_typed = compatible ty1 ty2 in
       if well_typed then
-	TE_fby (te1, te2), ty2
+	      TE_fby (te1, te2), ty2
       else error te2.texpr_loc (ExpectedType (ty2, ty1))
 
-  | PE_when (e1, x) ->
-      let te, ty, _ = Gamma.find loc env x in 
-      let well_typed = compatible_base ty Tbool in
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      if well_typed then
-	  TE_when (te1, te), ty1
-    else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+  | PE_when (e1, x, e2) ->
+    (* Type-check expression e2 to get its type information *)
+    let te2 = type_expr env e2 in
+    let ty2 = te2.texpr_type in
 
-  | PE_whenot (e1, x) ->
-      let te, ty, _ = Gamma.find loc env x in 
-      let well_typed = compatible_base ty Tbool in
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      if well_typed then
-	  TE_whenot (te1, te), ty1
-    else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+    (* Check if the type of e2 is compatible with [Tbool] *)
+    let well_typed = compatible_base ty2 [Tbool] in
 
-  | PE_merge (x, e1, e2) ->
-      let te, ty, _ = Gamma.find loc env x in 
-      let well_typed = compatible_base ty Tbool in
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      if well_typed then
-        let te2 = type_expr env e2 in
-        let ty2 = te2.texpr_type in
-        let well_typed_b = well_typed && compatible ty1 ty2 in
-        if well_typed_b then 
-         TE_merge (te, te1, te2), ty1
-        else error te2.texpr_loc (ExpectedType (ty2, ty1))
-      else error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+    (* Type-check expression e1 to get its type information *)
+    let te1 = type_expr env e1 in
+    let ty1 = te1.texpr_type in
+
+    (* If e2 is well-typed as [Tbool], construct a TE_when expression;
+        otherwise, raise an error indicating the expected type *)
+    if well_typed then
+        TE_when (te1, x, te2), ty1
+    else
+        error te1.texpr_loc (ExpectedType ([Tbool], ty1))
+
+  | PE_merge (x, l) ->
+    (* Extract the identifier from pattern expression x *)
+    let x_id = (match x.pexpr_desc with PE_ident id -> id | _ -> assert false) in
+    
+    (* Type-check and map the expressions in the merge body *)
+    let merged_exprs = List.map (fun (lhs, rhs) -> type_expr env lhs, type_expr env rhs) l in
+    
+    (* Initialize variables to store the types encountered during type-checking *)
+    let type_match, type_expr = ref None, ref None in
+    
+    (* Perform type-checking for each pair of expressions in the merge body *)
+    List.iter (fun ({texpr_type = t1; texpr_loc = l1; _}, {texpr_type = t2; texpr_loc = l2; _}) ->
+      match !type_match, !type_expr with
+        | None, None -> type_match := Some t1; type_expr := Some t2;
+        | Some t1', Some t2' ->
+          if compatible t1 t1' then
+            if compatible t2 t2' then
+              ()
+            else
+              error l2 (ExpectedType (t2', t2))
+          else
+            error l1 (ExpectedType (t1', t1))
+        | _ -> assert false)
+      merged_exprs;
+    
+    (* Retrieve information about the identifier x from the environment *)
+    let x_id_loc = x.pexpr_loc in
+    let x_var, x_ty, _ = Gamma.find x_id_loc env x_id in
+    
+    (* Check if the type of x is Tbool; raise an error if not *)
+    begin match x_ty with
+      | Tbool -> ()
+      | _ -> error x_id_loc (ExpectedType ([x_ty], [Tbool]))
+    end;
+    
+    (* Determine the result type based on the type of the last expression in merged_exprs *)
+    let result_type = (snd @@ List.hd merged_exprs).texpr_type in
+    
+    (* Create a new expression representing the identifier x *)
+    let exr =
+      { texpr_desc = TE_ident x_var;
+        texpr_type = [x_ty];
+        texpr_loc  = x_id_loc }
+    in
+    
+    (* Construct and return the resulting TE_merge expression and its type *)
+    TE_merge (exr, merged_exprs), result_type
 
   | PE_pre e ->
       let te = type_expr env e in

@@ -102,6 +102,8 @@ let rec tr_expr_op = function
                                     | TE_op(Op_not, [e]) -> tr_expr_op e.texpr_desc
                                     | TE_op(Op_or, [n; m]) -> tr_expr_op (TE_op(Op_and, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [n]))}; { m with texpr_desc = tr_expr_op (TE_op(Op_not, [m]))};]))
                                     | TE_op(Op_and, [n; m]) -> tr_expr_op (TE_op(Op_or, [{ n with texpr_desc = tr_expr_op (TE_op(Op_not, [n]))}; { m with texpr_desc = tr_expr_op (TE_op(Op_not, [m]))};]))
+                                    | TE_fby(n', m') -> tr_expr (TE_fby({n' with texpr_desc = TE_op(Op_not, [n'])}, {m' with texpr_desc = TE_op(Op_not, [m'])}))
+                                    
                                     | _ -> TE_op (o, [n])
                                     )
         | Op_and, [n; m] -> (match n.texpr_desc, m.texpr_desc with 
@@ -149,7 +151,7 @@ let rec tr_expr_op = function
                                                                        else tr_expr_op (TE_op(Op_or, [{b with texpr_desc = b'}; {m with texpr_desc = e}]))
                                             | e, TE_const (Cbool false) -> if e = b' then e
                                                                         else tr_expr_op (TE_op(Op_and, [{b with texpr_desc = b'}; {n with texpr_desc = e}]))
-                                            | _ -> TE_op (o, [n; m])
+                                            | e, e' -> TE_op (o, [{b with texpr_desc = b'}; {n with texpr_desc = e}; {m with texpr_desc = e'}])
                                     )
                                     )
           | x, y -> raise (Invalid_behavior "TE_operation not found")
@@ -160,7 +162,7 @@ and tr_expr = function
   | Typed_ast.TE_const n -> TE_const n 
   | Typed_ast.TE_ident x -> TE_ident x
   | Typed_ast.TE_op (o, l) -> tr_expr_op (TE_op(o, l))
-  | Typed_ast.TE_merge (x, e, e') -> TE_merge(x, {e with texpr_desc = tr_expr e.texpr_desc}, {e' with texpr_desc = tr_expr e'.texpr_desc})
+  | Typed_ast.TE_merge (x, l) -> TE_merge(x, List.map (fun (e, v) -> ({e with texpr_desc = tr_expr e.texpr_desc}, {v with texpr_desc = tr_expr v.texpr_desc})) l)
   | Typed_ast.TE_app (x, l) -> TE_app (x, List.map (fun v -> {v with texpr_desc = tr_expr v.texpr_desc}) l)
   | Typed_ast.TE_prim (x, l) -> TE_prim (x, List.map (fun v -> {v with texpr_desc = tr_expr v.texpr_desc}) l)
   | Typed_ast.TE_arrow (e, e') -> (match tr_expr e.texpr_desc, tr_expr e'.texpr_desc with 
@@ -176,13 +178,12 @@ and tr_expr = function
                                         texpr_loc= e.texpr_loc; });
                                         texpr_type=  [Tbool];
                                         texpr_loc= e.texpr_loc; }
-                                        ; e; e'])))
+                                        ; {e with texpr_desc = eb}; {e' with texpr_desc = eb'}])))
   | Typed_ast.TE_fby (e, e') -> (match tr_expr e.texpr_desc, tr_expr e'.texpr_desc with 
                                   | (n, m) when n = m -> n
-                                  | eb, eb' -> TE_fby(e, e')
+                                  | eb, eb' -> TE_fby({e with texpr_desc = eb}, {e' with texpr_desc = eb'})
                                 )
-  | Typed_ast.TE_when (e, x) -> TE_when({e with texpr_desc = tr_expr e.texpr_desc}, x)
-  | Typed_ast.TE_whenot (e, x) -> TE_whenot({e with texpr_desc = tr_expr e.texpr_desc}, x)
+  | Typed_ast.TE_when (e, x, e') -> TE_when({e with texpr_desc = tr_expr e.texpr_desc}, x, {e' with texpr_desc = tr_expr e'.texpr_desc})
   | Typed_ast.TE_pre e -> (match tr_expr e.texpr_desc with 
                           | TE_const n -> TE_const n
                           | eb ->  TE_fby(nil e.texpr_loc (List.hd e.texpr_type), {e with texpr_desc = eb}))
