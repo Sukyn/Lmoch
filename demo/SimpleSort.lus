@@ -1,0 +1,28 @@
+node simplesort(a1: int; a2: int; a3: int) returns (s1: int; s2: int; s3: int);
+var temp: int;
+let
+  if (a1 > a2) then
+  (
+    temp = a1;
+    a1 = a2;
+    a2 = temp;
+  );
+
+  if a2 > a3 then
+  (
+    temp = a2;
+    a2 = a3;
+    a3 = temp;
+  );
+
+  if a1 > a2 then
+  (
+    temp = a1;
+    a1 = a2;
+    a2 = temp;
+  );
+
+  s1 = a1;
+  s2 = a2;
+  s3 = a3;
+tel

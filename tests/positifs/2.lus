@@ -1,0 +1,18 @@
+/*
+112233445566778899101011111212131314141515161617171818191920202121222223232424252526262727282829293030313132323333343435353601122334455667788991010111112121313141415...
+ */
+
+node counter(res: bool; tick: bool) returns (o: int);
+let
+  o =
+    if res then 0
+    else if tick then (1 -> pre o + 1)
+    else (0 -> pre o);
+tel
+
+node main0 () returns (y:int);
+var half:bool;
+let
+  y = counter (false fby (y > 10), half);
+  half = true fby not half;
+tel

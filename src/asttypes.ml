@@ -1,21 +1,38 @@
-type location = Lexing.position * Lexing.position
+(* AST Types for the language *)
 
-type base_ty =
-  | Tbool
-  | Tint
-  | Treal
+(* Position range in the source code represented by two Lexing positions *)
+type positionRange = Lexing.position * Lexing.position
 
-type ty = base_ty list
+(* Basic types in the language *)
+type basicType =
+  | BooleanType                (* Represents a boolean type *)
+  | IntegerType                (* Represents an integer type *)
+  | RealType                   (* Represents a real number type *)
+  | EnumeratedDataType of string  (* Represents an enumerated data type *)
 
+(* List of basic types *)
+type typeList = basicType list
+
+(* Abstract data type with a name and constructors for enumerated and record types *)
+type enumeratedDataType = {
+  name: string;
+  constructors: string list;
+}
+
+(* Constants in the language *)
 type const =
-  | Cbool of bool
-  | Cint of int
-  | Creal of float
+  | BooleanConstant of bool    (* Boolean constant *)
+  | IntegerConstant of int     (* Integer constant *)
+  | RealConstant of float      (* Real number constant *)
+  | EnumeratedDataConstant of string * string option  (* Enumerated data constant *)
 
-type op =
-  | Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge
-  | Op_add | Op_sub | Op_mul | Op_div | Op_mod
-  | Op_add_f | Op_sub_f | Op_mul_f | Op_div_f
-  | Op_not
-  | Op_and | Op_or | Op_impl
-  | Op_if
+(* Operators in the language *)
+type operator =
+  | Op_eq | Op_neq                     (* Equality and inequality *)
+  | Op_lt | Op_le | Op_gt | Op_ge      (* Comparison operators: <, <=, >, >= *)
+  | Op_add | Op_sub | Op_mul | Op_div | Op_mod  (* Arithmetic operators: +, -, *, /, mod *)
+  | Op_not                              (* Logical NOT *)
+  | Op_and | Op_or | Op_impl            (* Logical AND, OR, IMPLIES *)
+  | Op_if                               (* Conditional operator *)
+
+(* End of AST Type Definitions *)

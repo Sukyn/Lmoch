@@ -1,0 +1,227 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0() returns (o : t);
+var ;
+let
+  (o) = (A't) -> (pre (merge o 
+                         (A't -> B't when A(o))
+                         (B't -> A't when B(o))));
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0__2() returns (o__1 : t)
+var ;
+let
+  (o__1) = ite(true fby false, A't,
+           default(t) fby merge o__1 
+                            (A't -> B't when A(o__1))
+                            (B't -> A't when B(o__1)));
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0__2() returns (o__1 : t)
+var aux'4__6: t; aux'3__5: t; aux'2__4: bool; aux'1__3: bool;
+let
+  (aux'4__6) = default(t) fby aux'3__5;
+  (aux'3__5) = merge o__1 
+                 (A't -> B't when A(o__1))
+                 (B't -> A't when B(o__1));
+  (aux'2__4) = true fby aux'1__3;
+  (aux'1__3) = false;
+  (o__1) = merge aux'2__4 
+             (true -> A't when True(aux'2__4))
+             (false -> aux'4__6 when False(aux'2__4));
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0__2()
+  returns (o__1 : t :: Base)
+var aux'4__6 : t :: Base, aux'3__5 : t :: Base, aux'2__4 : bool :: Base, 
+    aux'1__3 : bool :: Base;
+let
+  (aux'4__6) = default(t) fby aux'3__5;
+  (aux'3__5) = merge o__1 
+               (A't -> B't when A(o__1))
+               (B't -> A't when B(o__1));
+  (aux'2__4) = true fby aux'1__3;
+  (aux'1__3) = false;
+  (o__1) = merge aux'2__4 
+           (true -> A't when True(aux'2__4))
+           (false -> aux'4__6 when False(aux'2__4))
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0__2()
+  returns (o__1 : t :: Base)
+var aux'4__6 : t :: Base, aux'3__5 : t :: Base, aux'2__4 : bool :: Base, 
+    aux'1__3 : bool :: Base;
+let
+  (aux'1__3) = false;
+  (aux'2__4) = true fby aux'1__3;
+  (aux'4__6) = default(t) fby aux'3__5;
+  (o__1) = merge aux'2__4 
+           (true -> A't when True(aux'2__4))
+           (false -> aux'4__6 when False(aux'2__4));
+  (aux'3__5) = merge o__1 
+               (A't -> B't when A(o__1))
+               (B't -> A't when B(o__1))
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+
+node main0__2()
+  returns (o__1 : t :: Base)
+var aux'4__6 : t :: Base, aux'3__5 : t :: Base, aux'2__4 : bool :: Base, 
+    aux'1__3 : bool :: Base;
+  mem={node=[]
+       fby=[aux'2_next2__8 : bool :: Base, aux'4_next1__7 : t :: Base]}
+  init={node=[]
+        fby=[(aux'2_next2__8,true), (aux'4_next1__7,default(t))]}
+  compute={(aux'1__3 : bool :: Base) = false;
+           (aux'2__4 : bool :: Base) = aux'2_next2__8;
+           (aux'4__6 : t :: Base) = aux'4_next1__7;
+           (o__1 : t :: Base) = case(aux'2__4)True'inductive_bool: A't;
+                                                False'inductive_bool: aux'4__6;
+           (aux'3__5 : t :: Base) = case(o__1)A't: B't;
+                                                B't: A't}
+  update={(aux'2_next2__8,aux'1__3);
+          (aux'4_next1__7,aux'3__5)}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+enum t {
+  A,
+  B
+};
+
+struct main0_mem {
+  int aux__2_next2;
+  enum t aux__4_next1;
+};
+
+void main0_init (struct main0_mem* mem) {
+  mem->aux__2_next2 = 1;
+  mem->aux__4_next1 = A;
+}
+
+enum t main0 (struct main0_mem* mem) {
+  enum t aux__4;
+  enum t aux__3;
+  int aux__2;
+  int aux__1;
+  enum t o;
+  enum inductive_bool switch_1;
+  enum t switch_2;
+  
+  aux__1 = 0;
+  aux__2 = mem->aux__2_next2;
+  aux__4 = mem->aux__4_next1;
+  switch (aux__2) {
+    case TRUE: {
+      switch_1 = A;
+      break;
+    }
+    case FALSE: {
+      switch_1 = aux__4;
+      break;
+    }
+  };
+  o = switch_1;
+  switch (o) {
+    case A: {
+      switch_2 = B;
+      break;
+    }
+    case B: {
+      switch_2 = A;
+      break;
+    }
+  };
+  aux__3 = switch_2;
+  mem->aux__2_next2 = aux__1;
+  mem->aux__4_next1 = aux__3;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  struct main0_mem mem;
+  enum t res;
+  
+  main0_init(&(mem));
+  while (1) {
+    res = main0(&(mem));
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

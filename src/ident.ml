@@ -1,34 +1,23 @@
-
-type kind = 
-  | Stream
-  | Node
-  | Prim
-
 type t =
     { id: int;
       name: string;
       kind: kind; }
 
+and kind =
+  | Stream
+  | Node
+  | Prim
 
-let make =
-  let cpt = ref 0 in
-  fun s kind ->
-    incr cpt;
-    { id = !cpt;
-      name = s;
+let make : string -> kind -> t =
+  let counter = ref 0 in
+  fun name kind ->
+    if !counter = max_int then failwith "Maximum number of identifiers reached";
+    incr counter;
+    { id = !counter;
+      name = name;
       kind = kind; }
 
-let compare = Pervasives.compare
+let compare = compare
 
-let print fmt x =
-  Format.fprintf fmt "%s__%i" x.name x.id
-
-(* Utils *)
-let print_to_string print x =
-  ignore (Format.flush_str_formatter ());
-  print Format.str_formatter x;
-  Format.fprintf Format.str_formatter "@?";
-  Format.flush_str_formatter ()
-
-let string_of x = print_to_string print x
-
+let print fmt identifier =
+  Format.fprintf fmt "%s__%i" identifier.name identifier.id

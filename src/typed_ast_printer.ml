@@ -1,111 +1,72 @@
-(* code d'Adrien Guatto *)
-
+(* Importing required modules *)
 open Format
 open Asttypes
 open Typed_ast
+open Print_utils
 
-let rec print_list f sep fmt l = match l with
+(* This function prints a list of elements separated by a specified separator. *)
+let rec print_list_with_separators f sep fmt = print_list f sep "%a%s@ %a" false fmt
+
+(* Function to print expressions *)
+let rec print_expr fmt expr = match expr.Expr.tdesc with
+  | TE_const const -> print_const fmt const 
+  | TE_ident identifier -> fprintf fmt "%a" Ident.print identifier 
+  | TE_op (operator, expr_list) -> fprintf fmt "%a(%a)" print_operator operator print_arg_list expr_list 
+  | TE_app (name, expr_list) | TE_prim (name, expr_list) -> fprintf fmt "%a(@[%a@])" Ident.print name print_arg_list expr_list
+  | TE_arrow (left, right) -> fprintf fmt "@[(@[%a@]) -> (@[%a@])@]" print_expr left print_expr right
+  | TE_pre expr -> fprintf fmt "pre (@[%a@])" print_expr expr
+  | TE_tuple expr_list -> fprintf fmt "(@[%a@])" print_tuple_arg_list expr_list
+  | TE_merge (expr, list) -> fprintf fmt "@[merge %a @\n  @[%a@]@]" print_expr expr
+                             (print_list_with_new_lines (fun fmt (id,exp) -> fprintf fmt "(%a -> %a)" print_expr id print_expr exp)) list
+  | TE_fby (expr1, expr2) -> fprintf fmt "@[%a fby %a@]" print_expr expr1 print_expr expr2
+  | TE_when (expr1, str, expr2) -> fprintf fmt "@[%a when %s(%a)@]" print_expr expr1 str print_expr expr2
+  | TE_reset (id, expr_list, expr) -> fprintf fmt "(%a(@[%a@])) every %a" Ident.print id print_arg_list expr_list print_expr expr
+
+and print_arg_list fmt = function
   | [] -> ()
-  | [x] -> f fmt x
-  | h :: t -> fprintf fmt "%a%s@ %a" f h sep (print_list f sep) t
+  | [x] -> fprintf fmt "%a" print_expr x
+  | head :: tail -> fprintf fmt "%a,@ %a" print_expr head print_arg_list tail
 
-let rec print_list_eol f sep fmt l = match l with
-  | [] -> ()
-  | [x] -> fprintf fmt "%a%s" f x sep
-  | h :: t -> fprintf fmt "%a%s@\n%a" f h sep (print_list_eol f sep) t
+and print_tuple_arg_list fmt = function
+  | [] -> failwith "Empty tuple argument list"
+  | [x] -> fprintf fmt "%a" print_expr x
+  | head :: tail -> fprintf fmt "%a,@ %a" print_expr head print_arg_list tail
 
-let print_const fmt c = match c with
-  | Cbool b -> fprintf fmt "%b" b
-  | Cint i -> fprintf fmt "%d" i
-  | Creal f -> fprintf fmt "%f" f
-
-let print_op fmt op = match op with
-  | Op_eq -> fprintf fmt "eq"
-  | Op_neq -> fprintf fmt "neq"
-  | Op_lt -> fprintf fmt "lt"
-  | Op_le -> fprintf fmt "le"
-  | Op_gt -> fprintf fmt "gt"
-  | Op_ge -> fprintf fmt "ge"
-  | Op_add -> fprintf fmt "add"
-  | Op_sub -> fprintf fmt "sub"
-  | Op_mul -> fprintf fmt "mul"
-  | Op_div -> fprintf fmt "div"
-  | Op_mod -> fprintf fmt "mod"
-  | Op_add_f -> fprintf fmt "add_f"
-  | Op_sub_f -> fprintf fmt "sub_f"
-  | Op_mul_f -> fprintf fmt "mul_f"
-  | Op_div_f -> fprintf fmt "div_f"
-  | Op_not -> fprintf fmt "~"
-  | Op_and -> fprintf fmt "and"
-  | Op_or -> fprintf fmt "or"
-  | Op_impl -> fprintf fmt "impl"
-  | Op_if -> fprintf fmt "ite"
-
-let rec print_list_nl f fmt l = match l with
-  | [] -> ()
-  | [x] -> f fmt x
-  | h :: t -> fprintf fmt "%a@\n%a" f h (print_list_nl f) t
-
-
-let rec print_exp fmt e = match e.texpr_desc with
-  | TE_const c -> print_const fmt c
-  | TE_ident x -> fprintf fmt "%a" Ident.print x
-  | TE_op (op, el) -> fprintf fmt "%a(%a)" print_op op print_arg_list el
-  | TE_app (name, e_list) | TE_prim (name, e_list) ->
-      fprintf fmt "%a(@[%a@])" Ident.print name print_arg_list e_list
-  | TE_arrow (l, r) ->
-      fprintf fmt "@[(@[%a@]) -> (@[%a@])@]" print_exp l print_exp r
-  | TE_fby (l, r) ->
-      fprintf fmt "@[(@[%a@]) fby (@[%a@])@]" print_exp l print_exp r
-  | TE_when (l, x, r) ->
-      fprintf fmt "@[%a when %b(%a)@]" print_exp l x print_exp r
-  | TE_merge (x, l) ->
-      fprintf fmt "@[merge %a @\n  @[%a@]@]" print_exp x (print_list_nl (fun fmt (id,exp) -> fprintf fmt "(%a -> %a)" print_exp id print_exp exp)) l
-  | TE_pre e ->
-      fprintf fmt "pre (@[%a@])" print_exp e
-  | TE_tuple e_list ->
-      fprintf fmt "(@[%a@])" print_tuple_arg_list e_list
-
-and print_arg_list fmt e_list = match e_list with
-  | [] -> ()
-  | [x] -> fprintf fmt "%a" print_exp x
-  | h :: t -> fprintf fmt "%a,@ %a" print_exp h print_arg_list t
-
-and print_tuple_arg_list fmt e_list = match e_list with
-  | [] -> assert false
-  | [x] -> fprintf fmt "%a" print_exp x
-  | h :: t -> fprintf fmt "%a,@ %a" print_exp h print_arg_list t
-
-and print_const_exp fmt ce_list = match ce_list with
-  | [] -> assert false
+and print_const_expression_list fmt = function
+  | [] -> failwith "Empty constant expression list"
   | [c] -> fprintf fmt "%a" print_const c
-  | h :: t -> fprintf fmt "%a,@ %a" print_const h print_const_exp t
+  | head :: tail -> fprintf fmt "%a,@ %a" print_const head print_const_expression_list tail
 
-let print_eq fmt eq =
+let print_equation fmt { Equation.tpatt = { Patt.tdesc }; Equation.texpr } =
   fprintf fmt "@[(%a) = @[%a@]@]"
-    (print_list Ident.print ",") eq.teq_patt.tpatt_desc
-    print_exp eq.teq_expr
+    (print_list_with_separators Ident.print ",") tdesc
+    print_expr texpr
 
-let print_base_type fmt bty = match bty with
-  | Tbool -> fprintf fmt "bool"
-  | Tint -> fprintf fmt "int"
-  | Treal -> fprintf fmt "real"
+let print_variable_declaration fmt (name, type_list) =
+  fprintf fmt "%a : %a" Ident.print name print_base_type type_list
 
-(* let print_type = print_list print_cbase_type "*" *)
+let print_variable_initialization_declaration fmt ((name, type_list), init) =
+  fprintf fmt "%a: %a%s" Ident.print name print_base_type type_list
+    (match init with
+     | None -> ""
+     | Some const -> Format.asprintf " init %a" print_const const)
 
-let print_var_dec fmt (name, ty) =
-  fprintf fmt "%a : %a" Ident.print name print_base_type ty
+let rec print_variable_declaration_list = print_list_with_separators print_variable_declaration ";"
+let rec print_variable_initialization_declaration_list = print_list_with_separators print_variable_initialization_declaration ";"
 
-let rec print_var_dec_list = print_list print_var_dec ";"
-
-let print_node fmt nd =
+let print_node fmt { Node.tname; tinput; toutput; tlocal; teqs } =
   fprintf fmt
     "@[node %a(@[%a@]) returns (@[%a@])@\nvar @[%a;@]@\n@[<v 2>let@ @[%a@]@]@\ntel@]"
-    Ident.print nd.tn_name
-    print_var_dec_list nd.tn_input
-    print_var_dec_list nd.tn_output
-    print_var_dec_list nd.tn_local
-    (print_list_eol print_eq ";") nd.tn_equs
+    Ident.print tname
+    print_variable_declaration_list tinput
+    print_variable_declaration_list toutput
+    print_variable_initialization_declaration_list tlocal
+    (print_list_combined print_equation ";") teqs
 
-let print_node_list_std ndl =
-  List.iter (fun nd -> Format.printf "%a@\n@." print_node nd) ndl
+let print_node_list_std fmt node_list =
+  List.iter (fprintf fmt "%a@\n@." print_node) node_list
+
+let print_file_std {File.ttypes; File.tnodes} =
+  Format.printf "%a@\n@\n%a"
+    print_enumeratedtype ttypes
+    print_node_list_std tnodes

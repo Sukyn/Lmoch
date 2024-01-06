@@ -1,0 +1,85 @@
+node main0 (x, y: bool; a, b, e: int; c, d, ex: real) returns (p, q, r: int; s: real);
+var
+    z2, u2, v2, i2, z3, u3, v3, i3, q3: int;
+    m, l3, za, ua, j, k, zb, ub, vb, ib, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10: bool;
+    j2, k2, l, m2, n2, s, t, o2, u, v, p2, j3, p3: real;
+let
+
+    -- More NOT simplifications
+    f1 = not(x and not x); -- Not of contradiction
+    f2 = not(x or not x); -- Not of tautology
+
+    -- More AND simplifications
+    f3 = (x and y) and (y and x); -- Commutativity
+    f4 = x and x and x; -- Idempotent multiple times
+
+    -- More OR simplifications
+    f5 = (x or y) or (y or x); -- Commutativity
+    f6 = x or x or x; -- Idempotent multiple times
+
+    -- More implication (->) simplifications
+    f7 = (x => y) and (y => x); -- Bi-implication
+    f8 = (x => x); -- Self implication
+
+    -- More EQ simplifications
+    f9 = (a = b) and (b = a); -- Symmetry
+    f10 = (a = b) and (b = e) and (a = e); -- Transitivity
+
+    -- More NEQ simplifications
+    za = (a <> b) and (b <> a); -- Symmetry
+    ua = (a <> b) and (b <> e) and (e <> a); -- Transitivity
+
+    -- More LT, LE, GT, GE simplifications for integers
+    zb = (a < b) and (b < e) and (a < e); -- Transitivity for <
+    ub = (a <= b) and (b <= e) and (a <= e); -- Transitivity for <=
+    vb = (a > b) and (b > e) and (a > e); -- Transitivity for >
+    ib = (a >= b) and (b >= e) and (a >= e); -- Transitivity for >=
+
+    -- More LT, LE, GT, GE simplifications for reals
+    j = (c < d) and (d < ex) and (ex < c); -- Transitivity for < with reals
+    k = (c <= d) and (d <= ex) and (ex <= c); -- Transitivity for <= with reals
+    l3 = (c > d) and (d > ex) and (ex > c); -- Transitivity for > with reals
+    m = (c >= d) and (d >= ex) and (ex >= c); -- Transitivity for >= with reals
+
+    -- More ADD, SUB, MUL, DIV simplifications for integers
+    z2 = a + b - b; -- Adding and subtracting the same
+    u2 = a * (b / b); -- Multiplying and dividing by the same
+    v2 = (a * b) / b; -- Dividing the product by the multiplier
+    i2 = (a + b) - a; -- Canceling out added value
+
+    -- More complex expressions for integers
+    z3 = (a * 0) + (b * 1); -- Multiplying with 0 and 1
+    u3 = (a / 1) - (b / 1); -- Dividing by one
+    v3 = a - (b + a); -- Self subtraction
+    i3 = (a + e) * (b - b); -- Multiplying by zero result
+
+    -- More ADD_F, SUB_F, MUL_F, DIV_F simplifications for reals
+    j2 = c + d - d; -- Adding and subtracting the same
+    k2 = c * (d / d); -- Multiplying and dividing by the same
+    l = (c * d) / d; -- Dividing the product by the multiplier
+    m2 = (c + d) - c; -- Canceling out added value
+
+    -- More complex expressions for reals
+    n2 = (c * 0.0) + (d * 1.0); -- Multiplying with 0 and 1
+    o2 = (c / 1.0) - (d / 1.0); -- Dividing by one
+    p2 = c - (d + c); -- Self subtraction
+    j3 = (c + d) * (d - d); -- Multiplying by zero result
+
+    -- Testing IF simplifications with integers
+    p = if x then a + a else a - a; -- If with same variable in both branches
+    q = if x then b + e else b * e; -- Different operations in branches
+    p3 = if not x then c else c; -- Negation of condition with same result
+
+    -- Complex IF expressions with integers
+    q3 = if x then (if y then a else b) else b; -- Nested if
+    r = if x then a else (if x then b else e); -- Nested, dependent on same condition
+
+    -- Testing IF simplifications with reals
+    s = if x then c + c else c - c; -- If with same variable in both branches for reals
+    t = if x then d + c else d * c; -- Different operations in branches for reals
+
+    -- Complex IF expressions with reals
+    u = if x then (if y then c else d) else d; -- Nested if for reals
+    v = if x then c else (if x then d else ex); -- Nested, dependent on same condition for reals
+
+tel

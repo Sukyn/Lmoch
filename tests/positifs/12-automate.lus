@@ -1,0 +1,16 @@
+node oscillateur (lo, hi : int) returns (x: int);
+let
+  automaton
+  | Chaud ->
+      x = 0 -> pre x + 1;
+      until (x >= hi) continue Froid
+  | Froid ->
+      x = 0 -> pre x - 1;
+      until (x <= lo) continue Chaud
+  end
+tel
+
+node main0 () returns (o: int);
+let
+  o = oscillateur (-5, 5);
+tel

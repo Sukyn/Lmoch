@@ -1,0 +1,32 @@
+node cycleColors () returns (a: int);
+var 
+  speed, cycle: int;
+let
+  cycle = 1 -> pre cycle + 1; 
+
+  automaton
+  | RedState -> 
+      a = speed;
+      until cycle mod 4 = 0 continue GreenState
+  | GreenState -> 
+      a = -speed;
+      until cycle mod 4 = 0 continue BlueState
+  | BlueState -> 
+      a = 0;
+      until cycle mod 4 = 0 continue RedState
+  end
+
+  automaton
+  | KeepSpeed ->
+    speed = 2 fby speed;
+    until cycle mod 12 = 0 continue IncreaseSpeed 
+  | IncreaseSpeed ->
+    speed = pre speed + 1;
+    until true continue KeepSpeed 
+  end
+tel
+  
+node colorautomaton () returns (a: int);
+let
+  (a) = cycleColors(); 
+tel

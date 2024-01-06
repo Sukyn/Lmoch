@@ -1,0 +1,16 @@
+/* incr `o` une fois sur deux */
+
+type t = A | B
+
+node main0 () returns (o : int);
+var tmp : t;
+let
+  tmp = A fby
+        (merge tmp
+          (A -> B when A(tmp))
+          (B -> A when B(tmp)));
+
+  o = 0 -> merge tmp
+        (A -> pre o)
+        (B -> pre o + 1);
+tel

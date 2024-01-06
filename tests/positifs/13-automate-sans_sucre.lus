@@ -1,0 +1,21 @@
+/* En gros c'est le même fichier que 12-automate.lus mais avec l'automate dé-sucré */
+
+type t = Chaud | Froid
+
+node oscillateur (lo, hi : int) returns (x: int);
+var state : t;
+let
+  state = (Chaud't) fby
+            (merge state
+              (Chaud't -> if (x >= hi) then (Froid't) else (Chaud't))
+              (Froid't -> if (x <= lo) then (Chaud't) else (Froid't)));
+
+  x = merge state
+            (Chaud't -> 0 fby x + 1 when Chaud(state))
+            (Froid't -> 0 fby x - 1 when Froid(state));
+tel
+
+node main0 () returns (o : int);
+let
+  o = oscillateur (-5, 5);
+tel

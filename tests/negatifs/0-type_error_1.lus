@@ -1,0 +1,6 @@
+/* x when 1 mal typé, 1 devrait être de type bool */
+
+node main0 (x: int) returns (o: bool);
+let
+  o = x + (x when 1);
+tel

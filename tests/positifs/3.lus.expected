@@ -1,0 +1,562 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count() returns (o : int);
+var ;
+let
+  (o) = (0) -> (pre (add(o, 1)));
+tel
+
+node f() returns (x : bool);
+var ;
+let
+  (x) = true;
+tel
+
+node g() returns (x : bool);
+var ;
+let
+  (x) = false;
+tel
+
+node main0() returns (o : bool);
+var state__2 : typ__1;cond__4 : bool;cond__3 : bool;
+let
+  (cond__4) = eq(mod(count(), 5), 0);
+  (cond__3) = eq(mod(count(), 20), 0);
+  (state__2) = (One'typ__1) -> (pre (merge state__2 
+                                       (One'typ__1 -> ite(cond__3,
+                                                          Two'typ__1,
+                                                          One'typ__1))
+                                       (Two'typ__1 -> ite(cond__4,
+                                                          One'typ__1,
+                                                          Two'typ__1))));
+  (o) = merge state__2 
+          (One'typ__1 -> f())
+          (Two'typ__1 -> g());
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count__2() returns (o__1 : int)
+var ;
+let
+  (o__1) = ite(true fby false, 0, 0 fby add(o__1, 1));
+tel
+
+node f__4() returns (x__3 : bool)
+var ;
+let
+  (x__3) = true;
+tel
+
+node g__6() returns (x__5 : bool)
+var ;
+let
+  (x__5) = false;
+tel
+
+node main0__11() returns (o__7 : bool)
+var state__2__8: typ__1; cond__4__9: bool; cond__3__10: bool;
+let
+  (cond__4__9) = eq(mod(count__2(), 5), 0);
+  (cond__3__10) = eq(mod(count__2(), 20), 0);
+  (state__2__8) = ite(true fby false, One'typ__1,
+                  default(typ__1) fby merge state__2__8 
+                                        (One'typ__1 -> ite(cond__3__10,
+                                        Two'typ__1,
+                                        One'typ__1))
+                                        (Two'typ__1 -> ite(cond__4__9,
+                                        One'typ__1, Two'typ__1)));
+  (o__7) = merge state__2__8 
+             (One'typ__1 -> f__4())
+             (Two'typ__1 -> g__6());
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count__2() returns (o__1 : int)
+var aux'4__15: int; aux'3__14: int; aux'2__13: bool; aux'1__12: bool;
+let
+  (aux'4__15) = 0 fby aux'3__14;
+  (aux'3__14) = add(o__1, 1);
+  (aux'2__13) = true fby aux'1__12;
+  (aux'1__12) = false;
+  (o__1) = merge aux'2__13 
+             (true -> 0 when True(aux'2__13))
+             (false -> aux'4__15 when False(aux'2__13));
+tel
+
+node f__4() returns (x__3 : bool)
+var ;
+let
+  (x__3) = true;
+tel
+
+node g__6() returns (x__5 : bool)
+var ;
+let
+  (x__5) = false;
+tel
+
+node main0__11() returns (o__7 : bool)
+var aux'12__23: bool; aux'11__22: bool; aux'10__21: typ__1;
+    aux'9__20: typ__1; aux'8__19: bool; aux'7__18: bool; aux'6__17: int;
+    aux'5__16: int; state__2__8: typ__1; cond__4__9: bool; cond__3__10: bool;
+let
+  (aux'5__16) = count__2();
+  (cond__4__9) = eq(mod(aux'5__16, 5), 0);
+  (aux'6__17) = count__2();
+  (cond__3__10) = eq(mod(aux'6__17, 20), 0);
+  (aux'10__21) = default(typ__1) fby aux'9__20;
+  (aux'9__20) = merge state__2__8 
+                  (One'typ__1 -> merge cond__3__10 
+                                   (true -> Two'typ__1 when True(cond__3__10))
+                                   (false -> One'typ__1 when False(cond__3__10)))
+                  (Two'typ__1 -> merge cond__4__9 
+                                   (true -> One'typ__1 when True(cond__4__9))
+                                   (false -> Two'typ__1 when False(cond__4__9)));
+  (aux'8__19) = true fby aux'7__18;
+  (aux'7__18) = false;
+  (state__2__8) = merge aux'8__19 
+                    (true -> One'typ__1 when True(aux'8__19))
+                    (false -> aux'10__21 when False(aux'8__19));
+  (aux'12__23) = g__6();
+  (aux'11__22) = f__4();
+  (o__7) = merge state__2__8 
+             (One'typ__1 -> aux'11__22)
+             (Two'typ__1 -> aux'12__23);
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count__2()
+  returns (o__1 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base;
+let
+  (aux'4__15) = 0 fby aux'3__14;
+  (aux'3__14) = add(o__1, 1);
+  (aux'2__13) = true fby aux'1__12;
+  (aux'1__12) = false;
+  (o__1) = merge aux'2__13 
+           (true -> 0 when True(aux'2__13))
+           (false -> aux'4__15 when False(aux'2__13))
+tel
+node f__4()
+  returns (x__3 : bool :: Base)
+var ;
+let
+  (x__3) = true
+tel
+node g__6()
+  returns (x__5 : bool :: Base)
+var ;
+let
+  (x__5) = false
+tel
+node main0__11()
+  returns (o__7 : bool :: Base)
+var aux'12__23 : bool :: Base, aux'11__22 : bool :: Base, aux'10__21 : typ__1 :: Base, 
+    aux'9__20 : typ__1 :: Base, aux'8__19 : bool :: Base, aux'7__18 : bool :: Base, 
+    aux'6__17 : int :: Base, aux'5__16 : int :: Base, state__2__8 : typ__1 :: Base, 
+    cond__4__9 : bool :: Base, cond__3__10 : bool :: Base;
+let
+  (aux'5__16) = count__2();
+  (cond__4__9) = eq(mod(aux'5__16, 5), 0);
+  (aux'6__17) = count__2();
+  (cond__3__10) = eq(mod(aux'6__17, 20), 0);
+  (aux'10__21) = default(typ__1) fby aux'9__20;
+  (aux'9__20) = merge state__2__8 
+                (One'typ__1 -> merge cond__3__10 
+                (true -> Two'typ__1 when True(cond__3__10))
+                (false -> One'typ__1 when False(cond__3__10)))
+                (Two'typ__1 -> merge cond__4__9 
+                (true -> One'typ__1 when True(cond__4__9))
+                (false -> Two'typ__1 when False(cond__4__9)));
+  (aux'8__19) = true fby aux'7__18;
+  (aux'7__18) = false;
+  (state__2__8) = merge aux'8__19 
+                  (true -> One'typ__1 when True(aux'8__19))
+                  (false -> aux'10__21 when False(aux'8__19));
+  (aux'12__23) = g__6();
+  (aux'11__22) = f__4();
+  (o__7) = merge state__2__8 
+           (One'typ__1 -> aux'11__22)
+           (Two'typ__1 -> aux'12__23)
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count__2()
+  returns (o__1 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base;
+let
+  (aux'1__12) = false;
+  (aux'2__13) = true fby aux'1__12;
+  (aux'4__15) = 0 fby aux'3__14;
+  (o__1) = merge aux'2__13 
+           (true -> 0 when True(aux'2__13))
+           (false -> aux'4__15 when False(aux'2__13));
+  (aux'3__14) = add(o__1, 1)
+tel
+node f__4()
+  returns (x__3 : bool :: Base)
+var ;
+let
+  (x__3) = true
+tel
+node g__6()
+  returns (x__5 : bool :: Base)
+var ;
+let
+  (x__5) = false
+tel
+node main0__11()
+  returns (o__7 : bool :: Base)
+var aux'12__23 : bool :: Base, aux'11__22 : bool :: Base, aux'10__21 : typ__1 :: Base, 
+    aux'9__20 : typ__1 :: Base, aux'8__19 : bool :: Base, aux'7__18 : bool :: Base, 
+    aux'6__17 : int :: Base, aux'5__16 : int :: Base, state__2__8 : typ__1 :: Base, 
+    cond__4__9 : bool :: Base, cond__3__10 : bool :: Base;
+let
+  (aux'5__16) = count__2();
+  (aux'6__17) = count__2();
+  (aux'7__18) = false;
+  (aux'8__19) = true fby aux'7__18;
+  (aux'10__21) = default(typ__1) fby aux'9__20;
+  (aux'11__22) = f__4();
+  (aux'12__23) = g__6();
+  (state__2__8) = merge aux'8__19 
+                  (true -> One'typ__1 when True(aux'8__19))
+                  (false -> aux'10__21 when False(aux'8__19));
+  (cond__4__9) = eq(mod(aux'5__16, 5), 0);
+  (cond__3__10) = eq(mod(aux'6__17, 20), 0);
+  (o__7) = merge state__2__8 
+           (One'typ__1 -> aux'11__22)
+           (Two'typ__1 -> aux'12__23);
+  (aux'9__20) = merge state__2__8 
+                (One'typ__1 -> merge cond__3__10 
+                (true -> Two'typ__1 when True(cond__3__10))
+                (false -> One'typ__1 when False(cond__3__10)))
+                (Two'typ__1 -> merge cond__4__9 
+                (true -> One'typ__1 when True(cond__4__9))
+                (false -> Two'typ__1 when False(cond__4__9)))
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type typ__1 =
+  | One
+  | Two
+
+node count__2()
+  returns (o__1 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base;
+  mem={node=[]
+       fby=[aux'2_next2__25 : bool :: Base, aux'4_next1__24 : int :: Base]}
+  init={node=[]
+        fby=[(aux'2_next2__25,true), (aux'4_next1__24,0)]}
+  compute={(aux'1__12 : bool :: Base) = false;
+           (aux'2__13 : bool :: Base) = aux'2_next2__25;
+           (aux'4__15 : int :: Base) = aux'4_next1__24;
+           (o__1 : int :: Base) = case(aux'2__13)True'inductive_bool: 0;
+                                                   False'inductive_bool: aux'4__15;
+           (aux'3__14 : int :: Base) = add(o__1, 1)}
+  update={(aux'2_next2__25,aux'1__12);
+          (aux'4_next1__24,aux'3__14)}
+  
+node f__4()
+  returns (x__3 : bool :: Base)
+var ;
+  mem={node=[]
+       fby=[]}
+  init={node=[]
+        fby=[]}
+  compute={(x__3 : bool :: Base) = true}
+  update={}
+  
+node g__6()
+  returns (x__5 : bool :: Base)
+var ;
+  mem={node=[]
+       fby=[]}
+  init={node=[]
+        fby=[]}
+  compute={(x__5 : bool :: Base) = false}
+  update={}
+  
+node main0__11()
+  returns (o__7 : bool :: Base)
+var aux'12__23 : bool :: Base, aux'11__22 : bool :: Base, aux'10__21 : typ__1 :: Base, 
+    aux'9__20 : typ__1 :: Base, aux'8__19 : bool :: Base, aux'7__18 : bool :: Base, 
+    aux'6__17 : int :: Base, aux'5__16 : int :: Base, state__2__8 : typ__1 :: Base, 
+    cond__4__9 : bool :: Base, cond__3__10 : bool :: Base;
+  mem={node=[(count_mem4__31,count__2), (count_mem3__30,count__2)]
+       fby=[aux'8_next4__29 : bool :: Base, aux'10_next3__28 : typ__1 :: Base]}
+  init={node=[(count_mem4__31,count__2), (count_mem3__30,count__2)]
+        fby=[(aux'8_next4__29,true), (aux'10_next3__28,default(typ__1))]}
+  compute={(aux'5__16 : int :: Base) = count__2 <- count_mem4__31();
+           (aux'6__17 : int :: Base) = count__2 <- count_mem3__30();
+           (aux'7__18 : bool :: Base) = false;
+           (aux'8__19 : bool :: Base) = aux'8_next4__29;
+           (aux'10__21 : typ__1 :: Base) = aux'10_next3__28;
+           (aux'11__22 : bool :: Base) = f__4 <- f_mem2__27();
+           (aux'12__23 : bool :: Base) = g__6 <- g_mem1__26();
+           (state__2__8 : typ__1 :: Base) = case(aux'8__19)True'inductive_bool: One'typ__1;
+                                                             False'inductive_bool: aux'10__21;
+           (cond__4__9 : bool :: Base) = eq(mod(aux'5__16, 5), 0);
+           (cond__3__10 : bool :: Base) = eq(mod(aux'6__17, 20), 0);
+           (o__7 : bool :: Base) = case(state__2__8)One'typ__1: aux'11__22;
+                                                      Two'typ__1: aux'12__23;
+           (aux'9__20 : typ__1 :: Base) = case(state__2__8)One'typ__1: case(cond__3__10)
+                                                             True'inductive_bool: Two'typ__1;
+                                                               False'inductive_bool: One'typ__1;
+                                                             Two'typ__1: case(cond__4__9)
+                                                             True'inductive_bool: One'typ__1;
+                                                               False'inductive_bool: Two'typ__1}
+  update={(aux'8_next4__29,aux'7__18);
+          (aux'10_next3__28,aux'9__20)}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+enum typ__1 {
+  ONE,
+  TWO
+};
+
+struct count_mem {
+  int aux__2_next2;
+  int aux__4_next1;
+};
+
+void count_init (struct count_mem* mem) {
+  mem->aux__2_next2 = 1;
+  mem->aux__4_next1 = 0;
+}
+
+int count (struct count_mem* mem) {
+  int aux__4;
+  int aux__3;
+  int aux__2;
+  int aux__1;
+  int o;
+  enum inductive_bool switch_1;
+  
+  aux__1 = 0;
+  aux__2 = mem->aux__2_next2;
+  aux__4 = mem->aux__4_next1;
+  switch (aux__2) {
+    case TRUE: {
+      switch_1 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_1 = aux__4;
+      break;
+    }
+  };
+  o = switch_1;
+  aux__3 = (o + 1);
+  mem->aux__2_next2 = aux__1;
+  mem->aux__4_next1 = aux__3;
+  return o;
+}
+
+int f () {
+  int x;
+  
+  x = 1;
+  return x;
+}
+
+int g () {
+  int x;
+  
+  x = 0;
+  return x;
+}
+
+struct main0_mem {
+
+  struct count_mem count_mem4;
+  struct count_mem count_mem3;
+  int aux__8_next4;
+  enum typ__1 aux__10_next3;
+};
+
+void main0_init (struct main0_mem* mem) {
+  mem->aux__8_next4 = 1;
+  mem->aux__10_next3 = ONE;
+  count_init(&(mem->count_mem4));
+  count_init(&(mem->count_mem3));
+}
+
+int main0 (struct main0_mem* mem) {
+  int aux__12;
+  int aux__11;
+  enum typ__1 aux__10;
+  enum typ__1 aux__9;
+  int aux__8;
+  int aux__7;
+  int aux__6;
+  int aux__5;
+  enum typ__1 state__2;
+  int cond__4;
+  int cond__3;
+  int o;
+  int call_1;
+  int call_2;
+  int call_3;
+  int call_4;
+  enum inductive_bool switch_2;
+  enum typ__1 switch_3;
+  enum typ__1 switch_4;
+  enum inductive_bool switch_5;
+  enum inductive_bool switch_6;
+  
+  call_1 = count(&(mem->count_mem4));
+  aux__5 = call_1;
+  call_2 = count(&(mem->count_mem3));
+  aux__6 = call_2;
+  aux__7 = 0;
+  aux__8 = mem->aux__8_next4;
+  aux__10 = mem->aux__10_next3;
+  call_3 = f();
+  aux__11 = call_3;
+  call_4 = g();
+  aux__12 = call_4;
+  switch (aux__8) {
+    case TRUE: {
+      switch_2 = ONE;
+      break;
+    }
+    case FALSE: {
+      switch_2 = aux__10;
+      break;
+    }
+  };
+  state__2 = switch_2;
+  cond__4 = ((aux__5 % 5) == 0);
+  cond__3 = ((aux__6 % 20) == 0);
+  switch (state__2) {
+    case ONE: {
+      switch_3 = aux__11;
+      break;
+    }
+    case TWO: {
+      switch_3 = aux__12;
+      break;
+    }
+  };
+  o = switch_3;
+  switch (cond__3) {
+    case TRUE: {
+      switch_5 = TWO;
+      break;
+    }
+    case FALSE: {
+      switch_5 = ONE;
+      break;
+    }
+  };
+  switch (cond__4) {
+    case TRUE: {
+      switch_6 = ONE;
+      break;
+    }
+    case FALSE: {
+      switch_6 = TWO;
+      break;
+    }
+  };
+  switch (state__2) {
+    case ONE: {
+      switch_4 = switch_5;
+      break;
+    }
+    case TWO: {
+      switch_4 = switch_6;
+      break;
+    }
+  };
+  aux__9 = switch_4;
+  mem->aux__8_next4 = aux__7;
+  mem->aux__10_next3 = aux__9;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  struct main0_mem mem;
+  int res;
+  
+  main0_init(&(mem));
+  while (1) {
+    res = main0(&(mem));
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

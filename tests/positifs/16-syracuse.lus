@@ -1,0 +1,17 @@
+type t = Even | Odd
+
+node parity (i: int) returns (o : t);
+let
+  o = if i mod 2 = 0 then Even't else Odd't;
+tel;
+
+node main0 (i: int) returns (o: int);
+var x: t;
+let
+  x = parity (i) -> pre (parity (o));
+  o = i ->
+      (merge x
+        (Even't -> (pre o) / 2     when Even(x))
+        (Odd't  -> (pre o) * 3 + 1 when Odd(x))
+      );
+tel

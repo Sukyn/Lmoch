@@ -1,0 +1,125 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0(x : int;c : bool) returns (y : int);
+var ;
+let
+  (y) = x when True(c);
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__4(x__2 : int; c__3 : bool) returns (y__1 : int)
+var ;
+let
+  (y__1) = x__2 when True(c__3);
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__4(x__2 : int; c__3 : bool) returns (y__1 : int)
+var ;
+let
+  (y__1) = x__2 when True(c__3);
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__4(x__2 : int :: Base, c__3 : bool :: Base)
+  returns (y__1 : int :: Base on True(c__3))
+var ;
+let
+  (y__1) = x__2 when True(c__3)
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__4(x__2 : int :: Base, c__3 : bool :: Base)
+  returns (y__1 : int :: Base on True(c__3))
+var ;
+let
+  (y__1) = x__2 when True(c__3)
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__4(x__2 : int :: Base, c__3 : bool :: Base)
+  returns (y__1 : int :: Base on True(c__3))
+var ;
+  mem={node=[]
+       fby=[]}
+  init={node=[]
+        fby=[]}
+  compute={(y__1 : int :: Base on True(c__3)) = x__2}
+  update={}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+int main0 (int x, int c) {
+  int y;
+  
+  y = x;
+  return y;
+}
+
+int main (int argc, char* argv[]) {
+  int argv_0;
+  int argv_1;
+  int res;
+  
+  while (1) {
+    argv_0 = int_read();
+    argv_1 = int_read();
+    res = main0(argv_0, argv_1);
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

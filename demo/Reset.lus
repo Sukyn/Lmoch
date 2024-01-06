@@ -1,0 +1,9 @@
+node incr () returns (cpt: int);
+let
+  cpt = 0 fby cpt + 1;
+tel
+
+node main0 (i: bool) returns (o : int);
+let
+  o = reset incr() every i;
+tel

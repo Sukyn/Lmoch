@@ -1,0 +1,18 @@
+{% set const-main %}
+
+node pair (i: int) returns (o: bool);
+let
+   o = i mod 2 = 0;
+tel
+
+node main0 (i: int) returns (o: int);
+let
+  automaton
+  | Even ->
+      o = i -> pre o / 2;
+      until not (pair (o)) continue Odd
+  | Odd ->
+      o = i -> pre o * 3 + 1;
+      until pair (o) continue Even
+  end
+tel

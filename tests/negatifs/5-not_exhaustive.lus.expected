@@ -1,0 +1,21 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | A
+  | B
+  | C
+
+node main(x : t) returns (o : bool);
+var ;
+let
+  (o) = merge x 
+          (A't -> true when A(x))
+          (B't -> true when B(x));
+tel
+
+[31m[1m[Error 1004] Typing error: [0mThe merge operation is not exhaustive over the type [t]
+

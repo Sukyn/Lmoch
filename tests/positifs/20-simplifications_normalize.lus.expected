@@ -1,0 +1,220 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0(x : bool;y : bool;a : int;b : int;e : int;c : real;d : real;ex : real) returns (
+p : int;q : int;r : int;s : real);
+var z2 : int;u2 : int;v2 : int;i2 : int;z3 : int;u3 : int;v3 : int;i3 : int;q3 : int;m : bool;l3 : bool;za : bool;ua : bool;j : bool;k : bool;zb : bool;ub : bool;vb : bool;ib : bool;f1 : bool;f2 : bool;f3 : bool;f4 : bool;f5 : bool;f6 : bool;f7 : bool;f8 : bool;f9 : bool;f10 : bool;j2 : real;k2 : real;l : real;m2 : real;n2 : real;s : real;t : real;o2 : real;u : real;v : real;p2 : real;j3 : real;p3 : real;
+let
+  (f1) = ~(and(x, ~(x)));
+  (f2) = ~(or(x, ~(x)));
+  (f3) = and(and(x, y), and(y, x));
+  (f4) = and(and(x, x), x);
+  (f5) = or(or(x, y), or(y, x));
+  (f6) = or(or(x, x), x);
+  (f7) = and(impl(x, y), impl(y, x));
+  (f8) = impl(x, x);
+  (f9) = and(eq(a, b), eq(b, a));
+  (f10) = and(and(eq(a, b), eq(b, e)), eq(a, e));
+  (za) = and(neq(a, b), neq(b, a));
+  (ua) = and(and(neq(a, b), neq(b, e)), neq(e, a));
+  (zb) = and(and(lt(a, b), lt(b, e)), lt(a, e));
+  (ub) = and(and(le(a, b), le(b, e)), le(a, e));
+  (vb) = and(and(gt(a, b), gt(b, e)), gt(a, e));
+  (ib) = and(and(ge(a, b), ge(b, e)), ge(a, e));
+  (j) = and(and(lt(c, d), lt(d, ex)), lt(ex, c));
+  (k) = and(and(le(c, d), le(d, ex)), le(ex, c));
+  (l3) = and(and(gt(c, d), gt(d, ex)), gt(ex, c));
+  (m) = and(and(ge(c, d), ge(d, ex)), ge(ex, c));
+  (z2) = sub(add(a, b), b);
+  (u2) = mul(a, div(b, b));
+  (v2) = div(mul(a, b), b);
+  (i2) = sub(add(a, b), a);
+  (z3) = add(mul(a, 0), mul(b, 1));
+  (u3) = sub(div(a, 1), div(b, 1));
+  (v3) = sub(a, add(b, a));
+  (i3) = mul(add(a, e), sub(b, b));
+  (j2) = sub(add(c, d), d);
+  (k2) = mul(c, div(d, d));
+  (l) = div(mul(c, d), d);
+  (m2) = sub(add(c, d), c);
+  (n2) = add(mul(c, 0.000000), mul(d, 1.000000));
+  (o2) = sub(div(c, 1.000000), div(d, 1.000000));
+  (p2) = sub(c, add(d, c));
+  (j3) = mul(add(c, d), sub(d, d));
+  (p) = ite(x, add(a, a), sub(a, a));
+  (q) = ite(x, add(b, e), mul(b, e));
+  (p3) = ite(~(x), c, c);
+  (q3) = ite(x, ite(y, a, b), b);
+  (r) = ite(x, a, ite(x, b, e));
+  (s) = ite(x, add(c, c), sub(c, c));
+  (t) = ite(x, add(d, c), mul(d, c));
+  (u) = ite(x, ite(y, c, d), d);
+  (v) = ite(x, c, ite(x, d, ex));
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__55(x__47 : bool; y__48 : bool; a__49 : int; b__50 : int;
+               e__51 : int; c__52 : real; d__53 : real; ex__54 : real) returns (
+p__1 : int; q__2 : int; r__3 : int; s__39 : real)
+var z2__5: int; u2__6: int; v2__7: int; i2__8: int; z3__9: int; u3__10: int;
+    v3__11: int; i3__12: int; q3__13: int; m__14: bool; l3__15: bool;
+    za__16: bool; ua__17: bool; j__18: bool; k__19: bool; zb__20: bool;
+    ub__21: bool; vb__22: bool; ib__23: bool; f1__24: bool; f2__25: bool;
+    f3__26: bool; f4__27: bool; f5__28: bool; f6__29: bool; f7__30: bool;
+    f8__31: bool; f9__32: bool; f10__33: bool; j2__34: real; k2__35: real;
+    l__36: real; m2__37: real; n2__38: real; s__39: real; t__40: real;
+    o2__41: real; u__42: real; v__43: real; p2__44: real; j3__45: real;
+    p3__46: real;
+let
+  (f1__24) = ~(and(x__47, ~(x__47)));
+  (f2__25) = ~(or(x__47, ~(x__47)));
+  (f3__26) = and(and(x__47, y__48), and(y__48, x__47));
+  (f4__27) = and(and(x__47, x__47), x__47);
+  (f5__28) = or(or(x__47, y__48), or(y__48, x__47));
+  (f6__29) = or(or(x__47, x__47), x__47);
+  (f7__30) = and(impl(x__47, y__48), impl(y__48, x__47));
+  (f8__31) = impl(x__47, x__47);
+  (f9__32) = and(eq(a__49, b__50), eq(b__50, a__49));
+  (f10__33) = and(and(eq(a__49, b__50), eq(b__50, e__51)), eq(a__49, e__51));
+  (za__16) = and(neq(a__49, b__50), neq(b__50, a__49));
+  (ua__17) = and(and(neq(a__49, b__50), neq(b__50, e__51)), neq(e__51,
+             a__49));
+  (zb__20) = and(and(lt(a__49, b__50), lt(b__50, e__51)), lt(a__49, e__51));
+  (ub__21) = and(and(le(a__49, b__50), le(b__50, e__51)), le(a__49, e__51));
+  (vb__22) = and(and(gt(a__49, b__50), gt(b__50, e__51)), gt(a__49, e__51));
+  (ib__23) = and(and(ge(a__49, b__50), ge(b__50, e__51)), ge(a__49, e__51));
+  (j__18) = and(and(lt(c__52, d__53), lt(d__53, ex__54)), lt(ex__54, c__52));
+  (k__19) = and(and(le(c__52, d__53), le(d__53, ex__54)), le(ex__54, c__52));
+  (l3__15) = and(and(gt(c__52, d__53), gt(d__53, ex__54)), gt(ex__54, c__52));
+  (m__14) = and(and(ge(c__52, d__53), ge(d__53, ex__54)), ge(ex__54, c__52));
+  (z2__5) = sub(add(a__49, b__50), b__50);
+  (u2__6) = mul(a__49, div(b__50, b__50));
+  (v2__7) = div(mul(a__49, b__50), b__50);
+  (i2__8) = sub(add(a__49, b__50), a__49);
+  (z3__9) = add(mul(a__49, 0), mul(b__50, 1));
+  (u3__10) = sub(div(a__49, 1), div(b__50, 1));
+  (v3__11) = sub(a__49, add(b__50, a__49));
+  (i3__12) = mul(add(a__49, e__51), sub(b__50, b__50));
+  (j2__34) = sub(add(c__52, d__53), d__53);
+  (k2__35) = mul(c__52, div(d__53, d__53));
+  (l__36) = div(mul(c__52, d__53), d__53);
+  (m2__37) = sub(add(c__52, d__53), c__52);
+  (n2__38) = add(mul(c__52, 0.000000), mul(d__53, 1.000000));
+  (o2__41) = sub(div(c__52, 1.000000), div(d__53, 1.000000));
+  (p2__44) = sub(c__52, add(d__53, c__52));
+  (j3__45) = mul(add(c__52, d__53), sub(d__53, d__53));
+  (p__1) = ite(x__47, add(a__49, a__49), sub(a__49, a__49));
+  (q__2) = ite(x__47, add(b__50, e__51), mul(b__50, e__51));
+  (p3__46) = ite(~(x__47), c__52, c__52);
+  (q3__13) = ite(x__47, ite(y__48, a__49, b__50), b__50);
+  (r__3) = ite(x__47, a__49, ite(x__47, b__50, e__51));
+  (s__39) = ite(x__47, add(c__52, c__52), sub(c__52, c__52));
+  (t__40) = ite(x__47, add(d__53, c__52), mul(d__53, c__52));
+  (u__42) = ite(x__47, ite(y__48, c__52, d__53), d__53);
+  (v__43) = ite(x__47, c__52, ite(x__47, d__53, ex__54));
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__55(x__47 : bool; y__48 : bool; a__49 : int; b__50 : int;
+               e__51 : int; c__52 : real; d__53 : real; ex__54 : real) returns (
+p__1 : int; q__2 : int; r__3 : int; s__39 : real)
+var z2__5: int; u2__6: int; v2__7: int; i2__8: int; z3__9: int; u3__10: int;
+    v3__11: int; i3__12: int; q3__13: int; m__14: bool; l3__15: bool;
+    za__16: bool; ua__17: bool; j__18: bool; k__19: bool; zb__20: bool;
+    ub__21: bool; vb__22: bool; ib__23: bool; f1__24: bool; f2__25: bool;
+    f3__26: bool; f4__27: bool; f5__28: bool; f6__29: bool; f7__30: bool;
+    f8__31: bool; f9__32: bool; f10__33: bool; j2__34: real; k2__35: real;
+    l__36: real; m2__37: real; n2__38: real; s__39: real; t__40: real;
+    o2__41: real; u__42: real; v__43: real; p2__44: real; j3__45: real;
+    p3__46: real;
+let
+  (f1__24) = true;
+  (f2__25) = false;
+  (f3__26) = and(and(x__47, y__48), and(y__48, x__47));
+  (f4__27) = x__47;
+  (f5__28) = or(or(x__47, y__48), or(y__48, x__47));
+  (f6__29) = x__47;
+  (f7__30) = and(or(~(x__47), y__48), or(~(y__48), x__47));
+  (f8__31) = true;
+  (f9__32) = and(eq(a__49, b__50), eq(b__50, a__49));
+  (f10__33) = and(and(eq(a__49, b__50), eq(b__50, e__51)), eq(a__49, e__51));
+  (za__16) = and(neq(a__49, b__50), neq(b__50, a__49));
+  (ua__17) = and(and(neq(a__49, b__50), neq(b__50, e__51)), neq(e__51,
+             a__49));
+  (zb__20) = and(and(lt(a__49, b__50), lt(b__50, e__51)), lt(a__49, e__51));
+  (ub__21) = and(and(le(a__49, b__50), le(b__50, e__51)), le(a__49, e__51));
+  (vb__22) = and(and(gt(a__49, b__50), gt(b__50, e__51)), gt(a__49, e__51));
+  (ib__23) = and(and(ge(a__49, b__50), ge(b__50, e__51)), ge(a__49, e__51));
+  (j__18) = and(and(lt(c__52, d__53), lt(d__53, ex__54)), lt(ex__54, c__52));
+  (k__19) = and(and(le(c__52, d__53), le(d__53, ex__54)), le(ex__54, c__52));
+  (l3__15) = and(and(gt(c__52, d__53), gt(d__53, ex__54)), gt(ex__54, c__52));
+  (m__14) = and(and(ge(c__52, d__53), ge(d__53, ex__54)), ge(ex__54, c__52));
+  (z2__5) = sub(add(a__49, b__50), b__50);
+  (u2__6) = a__49;
+  (v2__7) = div(mul(a__49, b__50), b__50);
+  (i2__8) = sub(add(a__49, b__50), a__49);
+  (z3__9) = b__50;
+  (u3__10) = sub(a__49, b__50);
+  (v3__11) = sub(a__49, add(b__50, a__49));
+  (i3__12) = 0;
+  (j2__34) = sub(add(c__52, d__53), d__53);
+  (k2__35) = c__52;
+  (l__36) = div(mul(c__52, d__53), d__53);
+  (m2__37) = sub(add(c__52, d__53), c__52);
+  (n2__38) = d__53;
+  (o2__41) = sub(c__52, d__53);
+  (p2__44) = sub(c__52, add(d__53, c__52));
+  (j3__45) = 0;
+  (p__1) = merge x__47 
+             (true -> add(a__49, a__49) when True(x__47))
+             (false -> 0 when False(x__47));
+  (q__2) = merge x__47 
+             (true -> add(b__50, e__51) when True(x__47))
+             (false -> mul(b__50, e__51) when False(x__47));
+  (p3__46) = c__52;
+  (q3__13) = merge x__47 
+               (true -> merge y__48 
+                          (true -> a__49 when True(y__48))
+                          (false -> b__50 when False(y__48)) when True(x__47))
+               (false -> b__50 when False(x__47));
+  (r__3) = merge x__47 
+             (true -> a__49 when True(x__47))
+             (false -> merge x__47 
+                         (true -> b__50 when True(x__47))
+                         (false -> e__51 when False(x__47)) when False(x__47));
+  (s__39) = merge x__47 
+              (true -> add(c__52, c__52) when True(x__47))
+              (false -> 0 when False(x__47));
+  (t__40) = merge x__47 
+              (true -> add(d__53, c__52) when True(x__47))
+              (false -> mul(d__53, c__52) when False(x__47));
+  (u__42) = merge x__47 
+              (true -> merge y__48 
+                         (true -> c__52 when True(y__48))
+                         (false -> d__53 when False(y__48)) when True(x__47))
+              (false -> d__53 when False(x__47));
+  (v__43) = merge x__47 
+              (true -> c__52 when True(x__47))
+              (false -> merge x__47 
+                          (true -> d__53 when True(x__47))
+                          (false -> ex__54 when False(x__47)) when False(x__47));
+tel
+
+[31m[1m[Error 1005] Clocking error: [0mThe variable s__39 is defined multiple times in the same scope
+

@@ -2,562 +2,419 @@ open Asttypes
 open Parse_ast
 open Typed_ast
 open Format
+open Print_utils
 
 module S = Set.Make(Ident)
 module M = Map.Make(String)
 
-
 type error =
-  | ExpectedType of ty * ty
-  | ExpectedPattern of ty
-  | ExpectedBase of ty
-  | ExpectedNum of ty
-  | UnboundVar of string
-  | UnboundNode of string
-  | TooFewArguments
-  | TooManyArguments
   | Clash of string
-  | ConstantExpected
-  | Other of string
+  | ExpectedBase of typeList
+  | ExpectedNum of typeList
+  | ExpectedType of typeList * typeList
   | FlatTuple
-  | UndefinedOutputs of string list
   | InputVar of string
-  | Causality
-  | BadMain of ty * ty
+  | NotATuple
+  | NotExhaustiveMerge of string
+  | Other of string
+  | TooFewArguments
+  | UnboundNode of string
+  | UnboundVar of string
+  | UndefinedOutputs of string list
+  | UnknownEnumType of string
+  | Unreachable of string
 
-exception Error of location * error
+exception Error of positionRange * error
 let dummy_loc = Lexing.dummy_pos, Lexing.dummy_pos
 
+let nil = function
+  | BooleanType -> (Expr.TE_const (BooleanConstant false))
+  | IntegerType -> TE_const (IntegerConstant 0)
+  | RealType -> TE_const (RealConstant 0.0)
+  | EnumeratedDataType s -> TE_const (EnumeratedDataConstant (s, None))
+
 let error loc e = raise (Error (loc, e))
-let errors loc s = error loc (Other s)
 
-let print_base_type fmt = function
-  | Tbool -> fprintf fmt "bool"
-  | Tint -> fprintf fmt "int"
-  | Treal -> fprintf fmt "real"
-
+(* Function to print a type *)
 let print_type fmt = function
-  | ([]) -> fprintf fmt "empty tuple"
+  | [] -> fprintf fmt "empty tuple"
   | [t] -> print_base_type fmt t
   | (t::tl) ->
-      fprintf fmt "(";
-      print_base_type fmt t;
-      List.iter (fun t -> fprintf fmt " * %a" print_base_type t) tl;
-      fprintf fmt ")"
+    fprintf fmt "(";
+    print_base_type fmt t;
+    List.iter (fun t -> fprintf fmt " * %a" print_base_type t) tl;
+    fprintf fmt ")"
 
-let report fmt = function
-  | UnboundVar id -> fprintf fmt "unbound variable %s" id
-  | UnboundNode id -> fprintf fmt "unbound node %s" id
-  | ExpectedType (t1,t2) ->
-      fprintf fmt
-      "this expression has type %a but is expected to have type %a"
-      print_type t1 print_type t2
-  | ExpectedPattern ty ->
-      fprintf fmt "this pattern is expected to have type %a"
-	print_type ty
-  | ExpectedBase ty ->
-      fprintf fmt
-     "this expression has type %a but is expected to have a type simple type"
-      print_type ty
-  | ExpectedNum ty ->
-      fprintf fmt
-      "this expression has type %a but is expected to have type int or real"
-      print_type ty
-  | Clash id -> fprintf fmt "The variable %s is defined several times" id
-  | TooFewArguments -> fprintf fmt "too few arguments"
-  | TooManyArguments -> fprintf fmt "too many arguments"
-  | ConstantExpected -> fprintf fmt "this expression sould be a constant"
-  | Other s -> fprintf fmt "%s" s
-  | FlatTuple -> fprintf fmt "nested tuples are forbidden"
-  | UndefinedOutputs l ->
-      fprintf fmt "those output variables are undefined:%a"
-	(fun fmt -> List.iter (fun x -> fprintf fmt "%s " x)) l
-  | InputVar s -> fprintf fmt "%s is an input variable" s
-  | Causality -> fprintf fmt "problem of causality"
-  | BadMain (t_in, t_out) ->
-      fprintf fmt "The main node has type %a -> %a but is expected to have type %a -> bool"
-	print_type t_in print_type t_out
-        print_type t_in
+let print_list fmt list = List.iter (fun x -> fprintf fmt " %s" x) list
 
-let int_of_real = Ident.make "int_of_real" Ident.Prim
-let real_of_int = Ident.make "real_of_int" Ident.Prim
+let reportErrorFormat fmt = function
+  | Clash varId -> fprintf fmt "The variable '%s' is defined multiple times in the same scope" varId
+  | ExpectedBase typeList -> fprintf fmt "The expression has the type '%a', but a simple type was expected" print_type typeList
+  | ExpectedNum typeList -> fprintf fmt "The expression has the type '%a', but 'int' or 'real' was expected" print_type typeList
+  | ExpectedType (actualType, expectedType) -> fprintf fmt "The expression has type '%a', but is expected to have type '%a'" print_type actualType print_type expectedType
+  | FlatTuple -> fprintf fmt "Nested tuples are forbidden in this context"
+  | InputVar varId -> fprintf fmt "The variable '%s' is an input variable and cannot be modified" varId
+  | NotATuple -> fprintf fmt "The expression is not a tuple"
+  | NotExhaustiveMerge mergeType -> fprintf fmt "The merge operation is not exhaustive over the type [%s]" mergeType
+  | Other message -> fprintf fmt "An error occurred: %s" message
+  | TooFewArguments -> fprintf fmt "Too few arguments were provided to the function"
+  | UnboundNode nodeId -> fprintf fmt "The node '%s' is not defined in the current scope" nodeId
+  | UnboundVar varId -> fprintf fmt "The variable '%s' is not defined in the current scope" varId
+  | UndefinedOutputs outputList -> fprintf fmt "These output variables are undefined: %a" print_list outputList
+  | UnknownEnumType adtType -> fprintf fmt "The type '%s' was not found" adtType
+  | Unreachable point -> fprintf fmt "An internal error occurred (this point should be unreachable): [%s]" point
 
+(* Module Delta: provides functionality for handling primitive types and nodes *)
 module Delta = struct
 
-  let prims = [
-    "int_of_real", (int_of_real, ([Treal] , [Tint])) ;
-    "real_of_int", (real_of_int, ([Tint] , [Treal])) ; ]
-
+  (* Hashtable for storing nodes *)
   let nodes = Hashtbl.create 97
 
-  let is_primitive f = List.mem_assoc f prims
+  (* Function to find a node. Returns the node and a boolean indicating if it's a primitive *)
+  let find node =
+    match Hashtbl.find_opt nodes node with
+    | Some n -> n
+    | None -> raise Not_found
 
-  let find n =
-    try Hashtbl.find nodes n , false with
-	Not_found -> List.assoc n prims , true
+  (* Function to add a node to the hashtable *)
+  let add node_name node_type =
+    let node_id = Ident.make node_name Ident.Node in
+    Hashtbl.replace nodes node_name (node_id, node_type);
+    node_id
 
-  let add x t =
-    let x' = Ident.make x Ident.Node in
-    Hashtbl.replace nodes x (x', t);
-    x'
-
-  let save () = Hashtbl.fold (fun key (_,ty) env -> (key,ty)::env) nodes []
+  (* Function to save the current state of the hashtable *)
+  let save () = Hashtbl.fold (fun key (_,typeList) env -> (key,typeList)::env) nodes []
 end
 
-type io = Vinput | Vpatt
+type varType = InputVar | PatternVar
+
+(* Gamma module represents a symbol table for variable bindings *)
 module Gamma = struct
 
-  type t = (Ident.t * base_ty * io) M.t
+  (* t represents the type of the symbol table *)
+  type t = (Ident.t * basicType * varType) M.t
 
+  (* empty creates an empty symbol table *)
   let empty = M.empty
 
-  let add loc env x t io =
-    if M.mem x env then error loc (Clash x);
-    let x' = Ident.make x Ident.Stream in
-    M.add x (x',t,io) env
+  (* add inserts a new variable into the symbol table *)
+  let add location symbol_table variable type_ varType =
+    let kind = Ident.Stream in
+    let new_variable = Ident.make variable kind in
+    M.add variable (new_variable, type_, varType) symbol_table
 
-  let adds loc io =
-    List.fold_left (fun env (x,t) -> add loc env x t io)
+  (* adds inserts a list of variables into the symbol table *)
+  let adds location varType =
+    List.fold_left (fun symbol_table (variable, type_) -> add location symbol_table variable type_ varType)
 
-  let find loc env x = try
-    M.find x env
-  with Not_found ->  error loc (UnboundVar x)
+  (* find retrieves a variable from the symbol table *)
+  let find location symbol_table variable = 
+    match M.find_opt variable symbol_table with
+    | Some value -> value
+    | None -> error location (UnboundVar variable)
 
-  let patts_vars env =
-    M.fold (fun _ (x,_,io) s -> if io=Vpatt then S.add x s else s) env S.empty
+  (* patts_vars retrieves all pattern variables from the symbol table *)
+  let patts_vars symbol_table =
+    M.fold (fun _ (variable, _, varType) set -> if varType=PatternVar then S.add variable set else set) symbol_table S.empty
+
+  (* in_vars retrieves all input variables from the symbol table *)
+  let in_vars symbol_table =
+    M.fold (fun _ (variable, _, varType) set -> if varType=InputVar then S.add variable set else set) symbol_table S.empty
 
 end
 
-let base_ty_of_ty loc t =
-  match t with
-  | [t'] -> t'
-  | _ -> error loc (ExpectedBase t)
+type env = { vars : (Ident.t * basicType * varType) M.t; types : enumeratedDataType list}
 
+let base_type_of_type location type_list =
+  match type_list with
+  | [single_type] -> single_type
+  | _ -> error location (ExpectedBase type_list)
 
-
-let compatible_base actual_ty expected_ty =
-  actual_ty = expected_ty
-
-let compatible actual_ty expected_ty =
+let is_type_compatible actual_type_list expected_type_list =
   try
-    List.fold_left2
-      (fun well_t ac_t ex_t ->
-	let well_t' = compatible_base ac_t ex_t in
-	(well_t && well_t'))
-      true actual_ty expected_ty
-  with Invalid_argument _ -> false
-
-
-let real_expr_of_expr te =
-  match te.texpr_type with
-  | [Treal] -> te
-  | [Tint] ->
-      { texpr_desc = TE_prim (real_of_int,[te]);
-	texpr_type = [Treal];
-	texpr_loc = (Lexing.dummy_pos,Lexing.dummy_pos);
-      }
-  | _ -> assert false
-
-let real_op_of_int_op op =
-  match op with
-  | Op_add -> Op_add_f
-  | Op_sub -> Op_sub_f
-  | Op_mul -> Op_mul_f
-  | Op_div -> Op_div_f
-  | _ -> op
-
-let not_a_nested_tuple e loc =
-  match e with
-    | PE_tuple el ->
-	List.iter
-	  (fun e ->
-	     match e.pexpr_desc with
-		 PE_tuple _ -> error loc FlatTuple;
-	       | _ -> ()) el
-    | _ -> assert false
-
-let rec is_constant env e =
-  match e.texpr_desc with
-  | TE_const _ -> true
-  | TE_tuple el -> List.for_all (is_constant env) el
-  | _ -> false
-
-let rec const_of_expr e =
-  match e.texpr_desc with
-  | TE_const c -> [c]
-  | TE_tuple el ->
-      List.fold_right (fun e acc -> const_of_expr e @ acc) el []
-  | _ -> assert false
+    List.for_all2 (=) actual_type_list expected_type_list
+  with Invalid_argument _ -> 
+    error dummy_loc (Other "The actual and expected type lists must have the same length")
 
 let type_constant = function
-  | Cbool _ -> [Tbool]
-  | Cint _ -> [Tint]
-  | Creal _ -> [Treal]
+  | BooleanConstant _ -> [BooleanType]
+  | IntegerConstant _ -> [IntegerType]
+  | RealConstant _ -> [RealType]
+  | EnumeratedDataConstant (s, _) -> [EnumeratedDataType s]
 
-let rec type_expr env e =
-  let desc,t = type_expr_desc env e.pexpr_loc e.pexpr_desc in
-  { texpr_desc = desc; texpr_type = t; texpr_loc = e.pexpr_loc; }
+let rec type_expr env { PExpr.desc; loc } =
+  let desc, t = type_expr_desc env loc desc in
+  { tdesc = desc; ttype = t; Expr.tloc = loc; }
+
+and type_two_exprs env e1 e2 =
+  (type_expr env e1, type_expr env e2)
+
+and type_check_unary_and_create_node env expr operator targetType =
+  (Expr.TE_op (operator, [expected_type env expr targetType]), targetType)
+
+and type_check_binary_and_create_node env expr1 expr2 operator targetType =
+  (Expr.TE_op (operator, [expected_type env expr1 targetType; 
+                          expected_type env expr2 targetType]), targetType)
+
+and type_op env loc = function 
+  | (Op_not, [expr]) -> type_check_unary_and_create_node env expr Op_not [BooleanType]
+  | ((Op_and | Op_or | Op_impl as logicalOperator), [expr1; expr2]) ->
+      type_check_binary_and_create_node env expr1 expr2 logicalOperator [BooleanType]
+  | (Op_mod, [e1; e2]) ->
+      type_check_binary_and_create_node env e1 e2 Op_mod [IntegerType]
+  | (Op_sub, [expr]) ->
+      let typedExpr = type_expr env expr in
+      begin match typedExpr.ttype with
+        | [IntegerType] -> TE_op (Op_sub, [typedExpr]) , [IntegerType]
+        | [RealType] -> TE_op (Op_sub, [typedExpr]) , [RealType]
+        | typeList -> error expr.loc (ExpectedNum (typeList))
+      end
+  | ((Op_add | Op_sub | Op_mul | Op_div as operator), [e1; e2]) ->
+      let typedExpr1, typedExpr2 = type_two_exprs env e1 e2 in
+      begin match typedExpr1.Expr.ttype, typedExpr2.Expr.ttype with
+        | [IntegerType], [IntegerType] ->
+          TE_op (operator, [typedExpr1; typedExpr2]), [IntegerType]
+        | [RealType], [RealType] ->
+          TE_op(operator, [typedExpr1 ;typedExpr2 ]), [RealType]
+        | [(IntegerType | RealType)], typeList -> error e2.loc (ExpectedNum (typeList))
+        | typeList, _ -> error e1.loc (ExpectedNum (typeList))
+      end
+  | (Op_eq | Op_neq as operator, [e1; e2]) ->
+      let typedExpr1, typedExpr2 = type_two_exprs env e1 e2 in
+      begin match typedExpr1.Expr.ttype, typedExpr2.Expr.ttype with
+        | [t1], [t2] when t1 = t2 ->
+          TE_op (operator, [typedExpr1; typedExpr2]), [BooleanType]
+        | _ ->
+          error loc (ExpectedType (typedExpr2.Expr.ttype, typedExpr1.Expr.ttype))
+      end
+  | (Op_lt | Op_le | Op_gt | Op_ge as operator, [e1; e2]) ->
+      let typedExpr1, typedExpr2 = type_two_exprs env e1 e2 in
+      begin match typedExpr1.Expr.ttype, typedExpr2.Expr.ttype with
+        | [IntegerType], [IntegerType]
+        | [RealType], [RealType] ->
+          TE_op (operator, [typedExpr1; typedExpr2]), [BooleanType]
+        | _ ->
+          error loc (ExpectedType (typedExpr2.Expr.ttype, typedExpr1.Expr.ttype))
+      end
+    | (Op_if, [e1; e2; e3]) ->
+        let te1 = expected_type env e1 ([BooleanType]) in
+        let te2 = type_expr env e2 in
+        let te3 = type_expr env e3 in
+        let well_typed = is_type_compatible [te2.Expr.ttype] [te3.Expr.ttype] in
+        if well_typed then
+          let tt = te2.Expr.ttype in
+          TE_op(Op_if, [te1; te2; te3]), tt
+        else
+         error loc (ExpectedType (te3.Expr.ttype, te2.Expr.ttype))
+  
+  | _ -> error loc TooFewArguments
 
 and type_expr_desc env loc = function
-  | PE_const c ->
-      TE_const c , type_constant c
-
-  | PE_ident x ->
-      let x, ty, _ = Gamma.find loc env x in
-      TE_ident x , [ty]
-
-  | PE_op (Op_not, [e]) ->
-      let tt = [Tbool] in
-      let te = expected_type env e tt in
-      TE_op (Op_not, [te]) , tt
-
-  | PE_op (Op_sub, [e]) ->
-      let te = type_expr env e in
-      begin match te.texpr_type with
-      | [Tint] -> TE_op (Op_sub, [te]) , [Tint]
-      | [Treal] -> TE_op (Op_sub_f, [te]) , [Treal]
-      | ty -> error e.pexpr_loc (ExpectedNum (ty))
-      end
-
-  | PE_op (Op_sub_f, [e]) ->
-      let tt = [Treal] in
-      let te = expected_type env e tt in
-      TE_op (Op_sub_f, [te]) , tt
-
-  | PE_op ((Op_and | Op_or | Op_impl as op), [e1; e2]) ->
-      let tt = [Tbool] in
-      let te1 = expected_type env e1 tt in
-      let te2 = expected_type env e2 tt in
-      TE_op (op, [te1; te2]) , tt
-
-  | PE_op ((Op_add | Op_sub | Op_mul | Op_div as op), [e1; e2]) ->
-      let te1 = type_expr env e1 in
-      let te2 = type_expr env e2 in
-      begin match te1.texpr_type, te2.texpr_type with
-      | [Tint], [Tint] ->
-	  TE_op (op, [te1; te2]), [Tint]
-      | [(Tint | Treal)], [(Tint | Treal)] ->
-	  TE_op(real_op_of_int_op op, [ real_expr_of_expr te1 ;
-		                           real_expr_of_expr te2 ]),
-	  [Treal]
-      | [(Tint | Treal)], ty -> error e2.pexpr_loc (ExpectedNum (ty))
-      | ty, _ -> error e1.pexpr_loc (ExpectedNum (ty))
-      end
-
-  | PE_op (Op_mod, [e1; e2]) ->
-      let tt = [Tint] in
-      let te1 = expected_type env e1 tt in
-      let te2 = expected_type env e2 tt in
-      TE_op(Op_mod, [te1; te2]) , tt
-
-  | PE_op ((Op_div_f | Op_mul_f | Op_sub_f | Op_add_f as op), [e1; e2]) ->
-      let tt = [Treal] in
-      let te1 = expected_type env e1 tt in
-      let te2 = expected_type env e2 tt in
-      TE_op (op, [te1; te2]), tt
-
-  | PE_op (Op_eq | Op_neq as op, [e1; e2]) ->
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      let te2 = type_expr env e2 in
-      let ty2 = te2.texpr_type in
-      begin match ty1, ty2 with
-      | [t1], [t2] when t1 = t2 ->
-	  TE_op (op, [te1; te2]), [Tbool]
-      | _ ->
-	  error loc (Other "invalid operands to equality")
-      end
-
-  | PE_op (Op_lt | Op_le | Op_gt | Op_ge as op, [e1; e2]) ->
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      let te2 = type_expr env e2 in
-      let ty2 = te2.texpr_type in
-      begin match ty1, ty2 with
-      | [Tint], [Tint]
-      | [Treal], [Treal] ->
-	  TE_op (op, [te1; te2]), [Tbool]
-      | _ ->
-	  error loc (Other "invalid operands to comparison")
-      end
-
-  | PE_op (Op_if, [e1; e2; e3]) ->
-      let te1 = expected_type env e1 ([Tbool]) in
-      let te2 = type_expr env e2 in
-      let te3 = type_expr env e3 in
-      let well_typed = compatible te2.texpr_type te3.texpr_type in
-      if well_typed then
-	let tt = te2.texpr_type in
-	TE_op(Op_if, [te1; te2; te3]), tt
-      else
-	error loc (ExpectedType (te3.texpr_type, te2.texpr_type))
-
-  | PE_op ((Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge
-            | Op_add | Op_sub | Op_mul | Op_div | Op_mod
-            | Op_add_f | Op_sub_f | Op_mul_f | Op_div_f
-            | Op_not
-            | Op_and | Op_or | Op_impl
-            | Op_if), []) -> error loc TooFewArguments
-
-  | PE_op ((Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge
-            | Op_add | Op_mul | Op_div | Op_mod
-            | Op_add_f | Op_mul_f | Op_div_f
-            | Op_and | Op_or | Op_impl
-            | Op_if), [ _ ]) -> error loc TooFewArguments
-
-  | PE_op (Op_not, [ _; _ ]) -> error loc TooManyArguments
-
-  | PE_op (Op_if, [ _; _ ]) -> error loc TooFewArguments
-
-  | PE_op ((Op_eq | Op_neq | Op_lt | Op_le | Op_gt | Op_ge
-            | Op_add | Op_sub | Op_mul | Op_div | Op_mod
-            | Op_add_f | Op_sub_f | Op_mul_f | Op_div_f
-            | Op_not
-            | Op_and | Op_or | Op_impl
-            | Op_if), _) -> error loc TooManyArguments
-
-  | PE_app (f, el) ->
+  | Const constant -> TE_const constant, type_constant constant
+  | Ident identifier -> 
+    let identifier, typeList, _ = Gamma.find loc env.vars identifier in
+    TE_ident identifier, [typeList]
+  | Op (op, params) -> type_op env loc (op, params)
+  | App (functionName, exprList) ->
       begin try
-	let (f, (t_in,t_out)) , is_prim = Delta.find f in
-	let tel = type_args env loc t_in el in
-	let app_node = if is_prim then TE_prim(f, tel) else TE_app(f, tel) in
-	app_node ,
-	begin match t_out with
-	| [] -> assert false
-	| _ -> t_out
-	end
-      with Not_found ->
-	error loc (UnboundNode f)
+          let (functionName, (inputType, outputType)) = Delta.find functionName in
+          let typedExprList = type_args env loc inputType exprList in
+          let appNode = Expr.TE_app(functionName, typedExprList) in
+          appNode, begin match outputType with
+                        | [] -> assert false
+                        | _ -> outputType
+                   end
+        with Not_found ->
+          error loc (UnboundNode functionName)
       end
+  | Arrow (e1, e2) ->
+      let typedExpr1, typedExpr2 = type_two_exprs env e1 e2 in
+      if is_type_compatible typedExpr1.Expr.ttype typedExpr2.Expr.ttype then
+        let trueConst = {Expr.tdesc = TE_const (BooleanConstant (true)); Expr.ttype = [BooleanType]; Expr.tloc = dummy_loc} in
+        let falseConst = {Expr.tdesc = TE_const (BooleanConstant (false)); Expr.ttype = [BooleanType]; Expr.tloc = dummy_loc} in
+        let condition = {Expr.tdesc = TE_fby (trueConst, falseConst); Expr.ttype = [BooleanType]; Expr.tloc = dummy_loc} in
+        TE_op (Op_if, [condition; typedExpr1; typedExpr2;]), typedExpr1.Expr.ttype
+      else 
+        error typedExpr2.Expr.tloc (ExpectedType (typedExpr2.Expr.ttype, typedExpr1.Expr.ttype))
+  | Pre e ->
+    let typedExpr = type_expr env e in
+    let typeListExpr = typedExpr.Expr.ttype in
+    let nilNode = {Expr.tdesc = nil (List.hd typedExpr.Expr.ttype); Expr.ttype = typeListExpr; Expr.tloc = typedExpr.Expr.tloc} in
+    TE_fby (nilNode, typedExpr), typeListExpr
+  | When (e1, c, e2) ->
+      let typedExpr1, typedExpr2 = type_two_exprs env e1 e2 in
+      if typedExpr2.Expr.ttype = [BooleanType] then 
+        TE_when (typedExpr1, c, typedExpr2), typedExpr1.Expr.ttype
+      else begin
+          match List.find_opt (fun {name; constructors} -> List.mem c constructors) env.types with
+          | Some e when [EnumeratedDataType e.name] = typedExpr2.Expr.ttype -> TE_when (typedExpr1, c, typedExpr2), typedExpr1.Expr.ttype
+          | _ -> error typedExpr2.Expr.tloc (ExpectedType(typedExpr2.Expr.ttype, [BooleanType])) 
+        end
+  | Tuple exprList ->
+    let typedExprList = List.map (type_expr env) exprList in
+    TE_tuple typedExprList,
+    (List.map (fun e -> base_type_of_type e.Expr.tloc e.Expr.ttype) typedExprList)
+  | Merge (x, mergeList) ->
+      let mergeBody = List.map (fun (l, r) -> type_expr env l, type_expr env r) mergeList in
+      let matchType, exprType = ref None, ref None in
+      let check_type_compatibility type_ prevType loc = 
+        if not (is_type_compatible type_ prevType) then
+          error loc (ExpectedType (prevType, type_)) in
 
-  | PE_arrow (e1, e2) ->
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      let te2 = type_expr env e2 in
-      let ty2 = te2.texpr_type in
-      let well_typed = compatible ty1 ty2 in
-      if well_typed then
-	TE_arrow (te1, te2), ty2
-      else error te2.texpr_loc (ExpectedType (ty2, ty1))
-  
-  | PE_fby (e1, e2) ->
-      let te1 = type_expr env e1 in
-      let ty1 = te1.texpr_type in
-      let te2 = type_expr env e2 in
-      let ty2 = te2.texpr_type in
-      let well_typed = compatible ty1 ty2 in
-      if well_typed then
-	      TE_fby (te1, te2), ty2
-      else error te2.texpr_loc (ExpectedType (ty2, ty1))
+      List.iter (fun ({Expr.ttype = type1; Expr.tloc = loc1; _}, {Expr.ttype = type2; Expr.tloc = loc2; _}) ->
+        match !matchType, !exprType with
+          | None, None ->
+            matchType := Some type1; exprType := Some type2;
+          | (Some prevMatchType, Some prevExprType) ->
+            check_type_compatibility type1 prevMatchType loc1;
+            check_type_compatibility type2 prevExprType loc2;
+          | _ -> assert false)
+        mergeBody;
+      let typedIdentifier, typeListExpr, _ = Gamma.find x.loc env.vars (match x.desc with Ident id -> id 
+                                                                                          | _ -> assert false) in
+      begin match typeListExpr with
+        | BooleanType -> ()
+        | EnumeratedDataType typeName ->
+            verif_mergebody env typeName mergeBody x.loc
+        | _ -> error x.loc (ExpectedType ([typeListExpr], [EnumeratedDataType "?t"]))
+      end;
+      TE_merge ({ Expr.tdesc = TE_ident typedIdentifier;
+                  Expr.ttype = [typeListExpr];
+                  Expr.tloc  = x.loc }, mergeBody), (snd @@ List.hd mergeBody).Expr.ttype
+  | Reset (functionId, exprList, expr) ->
+      try
+        let (functionName, (inputType, outputType)) = Delta.find functionId in
+        let typedExprList = type_args env loc inputType exprList in
+        let typedExpr = type_expr env expr in
+        if typedExpr.Expr.ttype <> [BooleanType] then
+          error loc (ExpectedType ([BooleanType], typedExpr.Expr.ttype));
+        TE_reset (functionName, typedExprList, typedExpr), match outputType with
+          | [] -> assert false
+          | _ -> outputType
+      with Not_found ->
+        error loc (UnboundNode functionId)
 
-  | PE_when (e1, x, e2) ->
-    (* Type-check expression e2 to get its type information *)
-    let te2 = type_expr env e2 in
-    let ty2 = te2.texpr_type in
+and compare_constructors a b = match a, b with
+  | {Expr.tdesc = TE_const (EnumeratedDataConstant (_, Some id1)); _}, id -> id1 = id
+  | _ -> assert false
 
-    (* Check if the type of e2 is compatible with [Tbool] *)
-    let well_typed = compatible_base ty2 [Tbool] in
+and throw_error loc tname = error loc (NotExhaustiveMerge tname)
 
-    (* Type-check expression e1 to get its type information *)
-    let te1 = type_expr env e1 in
-    let ty1 = te1.texpr_type in
+and verif_mergebody env tname l id_loc =
+  let tl = match List.find_opt (fun {name; _} -> name = tname) env.types with
+    | None -> error id_loc (UnknownEnumType tname)
+    | Some e -> e in
+  let compare_f a b = match a, b with
+    | {Expr.tdesc = TE_const (EnumeratedDataConstant (_, Some id1)); _},
+      {Expr.tdesc = TE_const (EnumeratedDataConstant (_, Some id2)); _} -> compare id1 id2
+    | _ -> assert false
+  in
+  let sl = List.map fst l |> List.sort compare_f in
+  let stl = List.sort compare tl.constructors in
 
-    (* If e2 is well-typed as [Tbool], construct a TE_when expression;
-        otherwise, raise an error indicating the expected type *)
-    if well_typed then
-        TE_when (te1, x, te2), ty1
-    else
-        error te1.texpr_loc (ExpectedType ([Tbool], ty1))
-
-  | PE_merge (x, l) ->
-    (* Extract the identifier from pattern expression x *)
-    let x_id = (match x.pexpr_desc with PE_ident id -> id | _ -> assert false) in
-    
-    (* Type-check and map the expressions in the merge body *)
-    let merged_exprs = List.map (fun (lhs, rhs) -> type_expr env lhs, type_expr env rhs) l in
-    
-    (* Initialize variables to store the types encountered during type-checking *)
-    let type_match, type_expr = ref None, ref None in
-    
-    (* Perform type-checking for each pair of expressions in the merge body *)
-    List.iter (fun ({texpr_type = t1; texpr_loc = l1; _}, {texpr_type = t2; texpr_loc = l2; _}) ->
-      match !type_match, !type_expr with
-        | None, None -> type_match := Some t1; type_expr := Some t2;
-        | Some t1', Some t2' ->
-          if compatible t1 t1' then
-            if compatible t2 t2' then
-              ()
-            else
-              error l2 (ExpectedType (t2', t2))
-          else
-            error l1 (ExpectedType (t1', t1))
-        | _ -> assert false)
-      merged_exprs;
-    
-    (* Retrieve information about the identifier x from the environment *)
-    let x_id_loc = x.pexpr_loc in
-    let x_var, x_ty, _ = Gamma.find x_id_loc env x_id in
-    
-    (* Check if the type of x is Tbool; raise an error if not *)
-    begin match x_ty with
-      | Tbool -> ()
-      | _ -> error x_id_loc (ExpectedType ([x_ty], [Tbool]))
-    end;
-    
-    (* Determine the result type based on the type of the last expression in merged_exprs *)
-    let result_type = (snd @@ List.hd merged_exprs).texpr_type in
-    
-    (* Create a new expression representing the identifier x *)
-    let exr =
-      { texpr_desc = TE_ident x_var;
-        texpr_type = [x_ty];
-        texpr_loc  = x_id_loc }
-    in
-    
-    (* Construct and return the resulting TE_merge expression and its type *)
-    TE_merge (exr, merged_exprs), result_type
-
-  | PE_pre e ->
-      let te = type_expr env e in
-      TE_pre te, te.texpr_type
-
-  | PE_tuple el as n ->
-      not_a_nested_tuple n loc;
-      let tel = List.map (type_expr env) el in
-      TE_tuple tel,
-      (List.map (fun e -> base_ty_of_ty e.texpr_loc e.texpr_type) tel)
+  try
+    if not @@ List.for_all2 compare_constructors sl stl then throw_error id_loc tname
+  with Invalid_argument _ ->
+    throw_error id_loc tname
 
 and type_args env loc params_ty el =
   let tel = List.map (type_expr env) el in
-  let actual_types =
-    List.rev
-      begin
-	List.fold_left
-	  (fun res te -> List.rev_append te.texpr_type res)
-	  [] tel
-      end
-  in
-  let well_typed =
-    compatible actual_types params_ty
-  in
+  let actual_types = List.flatten (List.map (fun te -> te.Expr.ttype) tel) in
+  let well_typed = is_type_compatible actual_types params_ty in
   if well_typed then tel
   else error loc (ExpectedType (actual_types, params_ty));
 
-
 and expected_type env e tt =
   let te = type_expr env e in
-  let ty = te.texpr_type in
-  if ty = tt then te
-  else error e.pexpr_loc (ExpectedType (ty, tt))
+  let typeList = te.Expr.ttype in
+  if typeList = tt then te
+  else error e.loc (ExpectedType (typeList, tt))
 
 and expected_base_type env e =
-  let te = type_expr env e in
-  match te.texpr_type with
-  | [_] -> te
-  |  _ ->  error e.pexpr_loc (ExpectedBase (te.texpr_type))
+  match type_expr env e with
+  | {Expr.ttype = [_]; _} as te -> te
+  | {Expr.ttype; _} -> error e.loc (ExpectedBase ttype)
 
-let rec type_patt env p =
-  let desc, t = type_patt_desc env p.ppatt_loc p.ppatt_desc in
-  { tpatt_desc = desc; tpatt_type = t; tpatt_loc = p.ppatt_loc; }
+let rec type_patt env { PPattern.desc; PPattern.loc } =
+  let tdesc, ttype = type_patt_desc env loc desc in
+  { Patt.tdesc; Patt.ttype; Patt.tloc = loc; }
+  
+and find_pattern_var loc env x =
+  match Gamma.find loc env.vars x with
+  | x, typeList, PatternVar -> x, typeList
+  | _  -> error loc (InputVar x)
 
 and type_patt_desc env loc patt =
   match patt with
-  | PP_ident x -> begin
-      let x, ty =
-	match Gamma.find loc env x with
-	| x, t, Vpatt -> x, t
-	| _  -> error loc (InputVar x)
-      in
-      [x], [ty]
-    end
-  | PP_tuple pl ->
-      let pl_tyl =
-	List.map
-	  (fun x ->
-	     match Gamma.find loc env x with
-	     | x, ty, Vpatt -> x, ty
-	     | _  -> error loc (InputVar x)
-	  ) pl
-      in
+  | PPattern.Ident x ->
+      let x, typeList = find_pattern_var loc env x in
+      [x], [typeList]
+  | PPattern.Tuple pl ->
+      let pl_tyl = List.map (find_pattern_var loc env) pl in
       List.split pl_tyl
 
-
-let type_equation env eq =
-  let patt = type_patt env eq.peq_patt in
-  let expr = type_expr env eq.peq_expr in
-  let well_typed = compatible expr.texpr_type patt.tpatt_type in
-  if well_typed then
-    { teq_patt = patt; teq_expr = expr; }
-  else
-    error
-      eq.peq_expr.pexpr_loc (ExpectedType (expr.texpr_type, patt.tpatt_type))
-
-
-let add_vars_of_patt loc s {teq_patt = {tpatt_desc=p}} =
+let type_equation env = function
+  | Eq eq ->
+      let patt = type_patt env eq.pattern in
+      let expr = type_expr env eq.expr in
+      if is_type_compatible expr.Expr.ttype patt.Patt.ttype then
+        { Equation.tpatt = patt; Equation.texpr = expr; }
+      else
+        error eq.expr.loc (ExpectedType (expr.Expr.ttype, patt.Patt.ttype))
+  | Match _ ->
+      error dummy_loc (Other "Pattern matching is not implemented")
+  | Automaton {loc_automaton = loc; _} ->
+      error loc (Unreachable "Uncompiled automaton")
+      
+let add_vars_of_patt loc s eq =
   let add x s =
     if S.mem x s then error loc (Clash x.Ident.name);
     S.add x s
   in
-  List.fold_left (fun s x -> add x s) s p
+  List.fold_left (fun s x -> add x s) s eq.Equation.tpatt.Patt.tdesc
 
 let check_outputs loc env equs =
   let s = List.fold_left (add_vars_of_patt loc) S.empty equs in
-  let not_defined = S.diff (Gamma.patts_vars env) s in
-  if not (S.is_empty not_defined) then
+  let undefined_outputs = S.diff (Gamma.patts_vars env.vars) s in
+  if not (S.is_empty undefined_outputs) then
     error loc (UndefinedOutputs
-                 (List.map (fun x -> x.Ident.name) (S.elements not_defined)))
+                 (List.map (fun x -> x.Ident.name) (S.elements undefined_outputs)))
 
-let check_causality loc inputs equs =
-  begin try ignore (Scheduling.schedule_equs inputs equs)
-  with Scheduling.Causality -> error loc Causality
-  end
+let map_vars loc env vars =
+  List.map (fun (x, typeList) -> let x', _, _ = Gamma.find loc env.vars x in (x', typeList)) vars
 
-let type_node n =
-  let env = Gamma.adds n.pn_loc Vpatt Gamma.empty (n.pn_output@n.pn_local) in
-  let env = Gamma.adds n.pn_loc Vinput env n.pn_input in
-  let equs = List.map (type_equation env) n.pn_equs in
-  check_outputs n.pn_loc env equs;
-  let t_in = List.map (fun (_, ty) -> ty) n.pn_input in
-  let t_out = List.map (fun (_, ty) -> ty) n.pn_output in
-  let name = Delta.add n.pn_name (t_in,t_out) in
-  let input =
-    List.map
-      (fun (x, ty) -> let x', _, _ = Gamma.find n.pn_loc env x in (x', ty))
-      n.pn_input
-  in
-  let output =
-    List.map
-      (fun (x, ty) -> let x', _, _ = Gamma.find n.pn_loc env x in (x', ty))
-      n.pn_output
-  in
+let type_node ptypes n =
+  let env = Gamma.adds n.node_location PatternVar Gamma.empty (n.node_outputs@n.node_localvars) in
+  let env = Gamma.adds n.node_location InputVar env n.node_inputs in
+  let env = { vars = env; types = ptypes } in
+  let equs = List.map (type_equation env) n.node_equs in
+  check_outputs n.node_location env equs;
+  let t_in = List.map (fun (_, typeList) -> typeList) n.node_inputs in
+  let t_out = List.map (fun (_, typeList) -> typeList) n.node_outputs in
+  let name = Delta.add n.node_name (t_in,t_out) in
+  let input = map_vars n.node_location env n.node_inputs in
+  let output = map_vars n.node_location env n.node_outputs in
   let local =
     List.map
-      (fun (x, ty) -> let x', _, _ = Gamma.find  n.pn_loc env x in (x', ty))
-      n.pn_local
+      (fun (x, typeList) -> let x', _, _ = Gamma.find n.node_location env.vars x in (x', typeList), None)
+      n.node_localvars
   in
   let node =
-    { tn_name = name;
-      tn_input = input;
-      tn_output = output;
-      tn_local = local;
-      tn_equs = equs;
-      tn_loc = n.pn_loc; }
+    { Node.tname = name;
+      Node.tinput = input;
+      Node.toutput = output;
+      Node.tlocal = local;
+      Node.teqs = equs;
+      Node.tloc = n.node_location; }
   in
-  check_causality node.tn_loc node.tn_input equs;
   node
 
 let check_main ft main =
-  let (_, ty), is_prim =
-    try Delta.find main with Not_found -> error dummy_loc (UnboundNode main)
-  in
-  match ty, is_prim with
-  | (_, [Tbool]), false -> ()
-  | (t_in, t_out), false ->
-      let n = List.find (fun n -> n.tn_name.Ident.name = main) (List.rev ft) in
-      error n.tn_loc (BadMain (t_in, t_out))
-  | _ -> errors dummy_loc "The main node cannot be a primitive function"
+  match Delta.find main with
+  | exception Not_found -> error dummy_loc (UnboundNode main)
+  | _ -> ()
 
 let type_file f main =
-  let ft = List.map type_node f in
+  let ft = List.map (type_node f.additional_types) f.nodes in
   if main <> "" then check_main ft main;
-  ft
+  { File.tnodes = ft; File.ttypes = f.additional_types }

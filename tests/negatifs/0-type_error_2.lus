@@ -1,0 +1,9 @@
+type t = A | B | C
+
+node main0 (x : t) returns (o: bool);
+let
+  o = merge x
+        (A't -> true  when A(x))
+        (B't -> 1     when B(x))
+        (C't -> false when C(x));
+tel

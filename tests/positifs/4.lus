@@ -1,0 +1,13 @@
+{% set const-main %}
+
+node main0 (i : int) returns (y : int);
+let
+  automaton
+  | Init ->
+      y = i;
+      until true continue Next -- cas de base
+  | Next ->
+      y = - pre y;
+      until false continue Next -- on change plus
+  end
+tel

@@ -1,0 +1,15 @@
+node m0() returns (o: int);
+var x: bool;
+let
+  x = true;
+  o =
+    if x then
+      if x then 1
+      else 2
+    else 3;
+tel
+
+node main0() returns (o:int);
+let
+  o = m0();
+tel

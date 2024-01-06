@@ -1,0 +1,11 @@
+node main0 (lo, hi : int) returns (x: int);
+let
+  automaton
+  | Chaud ->
+      x = 0 -> pre x + 1;
+      until (x >= hi) continue Froid
+  | Froid ->
+      x = 0 -> pre x - 1;
+      until (x <= lo) continue Chaud2
+  end
+tel

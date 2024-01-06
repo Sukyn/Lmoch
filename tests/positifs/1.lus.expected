@@ -1,0 +1,353 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting(tic : bool;toc : bool) returns (o : int;y : int);
+var v : int;
+let
+  (o) = ite(tic, v, (0) -> (add(pre (o), v)));
+  (v) = ite(toc, 1, 0);
+  (y) = v;
+tel
+
+node main0(x : bool) returns (o : bool);
+var y : int;z : int;
+let
+  (y,z) = counting(x, x);
+  (o) = merge x 
+          (true -> false when True(x))
+          (false -> true when False(x));
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting__6(tic__4 : bool; toc__5 : bool) returns (o__1 : int;
+                                                        y__2 : int)
+var v__3: int;
+let
+  (o__1) = ite(tic__4, v__3, ite(true fby false, 0, add(0 fby o__1, v__3)));
+  (v__3) = ite(toc__5, 1, 0);
+  (y__2) = v__3;
+tel
+
+node main0__11(x__10 : bool) returns (o__7 : bool)
+var y__8: int; z__9: int;
+let
+  (y__8, z__9) = counting__6(x__10, x__10);
+  (o__7) = merge x__10 
+             (true -> false when True(x__10))
+             (false -> true when False(x__10));
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting__6(tic__4 : bool; toc__5 : bool) returns (o__1 : int;
+                                                        y__2 : int)
+var aux'4__15: int; aux'3__14: int; aux'2__13: bool; aux'1__12: bool;
+    v__3: int;
+let
+  (aux'4__15) = 0 fby aux'3__14;
+  (aux'3__14) = o__1;
+  (aux'2__13) = true fby aux'1__12;
+  (aux'1__12) = false;
+  (o__1) = merge tic__4 
+             (true -> v__3 when True(tic__4))
+             (false -> merge aux'2__13 
+                         (true -> 0 when True(aux'2__13))
+                         (false -> add(aux'4__15, v__3) when False(aux'2__13)) when False(tic__4));
+  (v__3) = merge toc__5 
+             (true -> 1 when True(toc__5))
+             (false -> 0 when False(toc__5));
+  (y__2) = v__3;
+tel
+
+node main0__11(x__10 : bool) returns (o__7 : bool)
+var aux'5__16: int; aux'6__17: int; y__8: int; z__9: int;
+let
+  (aux'5__16, aux'6__17) = counting__6(x__10, x__10);
+  (y__8, z__9) = (aux'5__16, aux'6__17);
+  (o__7) = merge x__10 
+             (true -> false when True(x__10))
+             (false -> true when False(x__10));
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting__6(tic__4 : bool :: Base, toc__5 : bool :: Base)
+  returns (o__1 : int :: Base, y__2 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base, v__3 : int :: Base;
+let
+  (aux'4__15) = 0 fby aux'3__14;
+  (aux'3__14) = o__1;
+  (aux'2__13) = true fby aux'1__12;
+  (aux'1__12) = false;
+  (o__1) = merge tic__4 
+           (true -> v__3 when True(tic__4))
+           (false -> merge aux'2__13 
+           (true -> 0 when True(aux'2__13))
+           (false -> add(aux'4__15, v__3) when False(aux'2__13)) when False(tic__4));
+  (v__3) = merge toc__5 
+           (true -> 1 when True(toc__5))
+           (false -> 0 when False(toc__5));
+  (y__2) = v__3
+tel
+node main0__11(x__10 : bool :: Base)
+  returns (o__7 : bool :: Base)
+var aux'5__16 : int :: Base, aux'6__17 : int :: Base, y__8 : int :: Base, 
+    z__9 : int :: Base;
+let
+  (aux'5__16, aux'6__17) = counting__6(x__10, x__10);
+  (y__8, z__9) = (aux'5__16, aux'6__17);
+  (o__7) = merge x__10 
+           (true -> false when True(x__10))
+           (false -> true when False(x__10))
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting__6(tic__4 : bool :: Base, toc__5 : bool :: Base)
+  returns (o__1 : int :: Base, y__2 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base, v__3 : int :: Base;
+let
+  (v__3) = merge toc__5 
+           (true -> 1 when True(toc__5))
+           (false -> 0 when False(toc__5));
+  (aux'1__12) = false;
+  (aux'2__13) = true fby aux'1__12;
+  (aux'4__15) = 0 fby aux'3__14;
+  (o__1) = merge tic__4 
+           (true -> v__3 when True(tic__4))
+           (false -> merge aux'2__13 
+           (true -> 0 when True(aux'2__13))
+           (false -> add(aux'4__15, v__3) when False(aux'2__13)) when False(tic__4));
+  (y__2) = v__3;
+  (aux'3__14) = o__1
+tel
+node main0__11(x__10 : bool :: Base)
+  returns (o__7 : bool :: Base)
+var aux'5__16 : int :: Base, aux'6__17 : int :: Base, y__8 : int :: Base, 
+    z__9 : int :: Base;
+let
+  (o__7) = merge x__10 
+           (true -> false when True(x__10))
+           (false -> true when False(x__10));
+  (aux'5__16, aux'6__17) = counting__6(x__10, x__10);
+  (y__8, z__9) = (aux'5__16, aux'6__17)
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node counting__6(tic__4 : bool :: Base, toc__5 : bool :: Base)
+  returns (o__1 : int :: Base, y__2 : int :: Base)
+var aux'4__15 : int :: Base, aux'3__14 : int :: Base, aux'2__13 : bool :: Base, 
+    aux'1__12 : bool :: Base, v__3 : int :: Base;
+  mem={node=[]
+       fby=[aux'2_next2__19 : bool :: Base, aux'4_next1__18 : int :: Base]}
+  init={node=[]
+        fby=[(aux'2_next2__19,true), (aux'4_next1__18,0)]}
+  compute={(v__3 : int :: Base) = case(toc__5)True'inductive_bool: 1;
+                                                False'inductive_bool: 0;
+           (aux'1__12 : bool :: Base) = false;
+           (aux'2__13 : bool :: Base) = aux'2_next2__19;
+           (aux'4__15 : int :: Base) = aux'4_next1__18;
+           (o__1 : int :: Base) = case(tic__4)True'inductive_bool: v__3;
+                                                False'inductive_bool: case(aux'2__13)
+                                                True'inductive_bool: 0;
+                                                  False'inductive_bool: 
+                                                  add(aux'4__15, v__3);
+           (y__2 : int :: Base) = v__3;
+           (aux'3__14 : int :: Base) = o__1}
+  update={(aux'2_next2__19,aux'1__12);
+          (aux'4_next1__18,aux'3__14)}
+  
+node main0__11(x__10 : bool :: Base)
+  returns (o__7 : bool :: Base)
+var aux'5__16 : int :: Base, aux'6__17 : int :: Base, y__8 : int :: Base, 
+    z__9 : int :: Base;
+  mem={node=[(counting_mem1__20,counting__6)]
+       fby=[]}
+  init={node=[(counting_mem1__20,counting__6)]
+        fby=[]}
+  compute={(o__7 : bool :: Base) = case(x__10)True'inductive_bool: false;
+                                                False'inductive_bool: true;
+           (aux'5__16 : int :: Base, aux'6__17 : int :: Base) = counting__6 <- counting_mem1__20(
+                                                                x__10, x__10);
+           (y__8 : int :: Base, z__9 : int :: Base) = (aux'5__16, aux'6__17)}
+  update={}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+struct counting_mem {
+  int aux__2_next2;
+  int aux__4_next1;
+};
+
+void counting_init (struct counting_mem* mem) {
+  mem->aux__2_next2 = 1;
+  mem->aux__4_next1 = 0;
+}
+
+struct counting_ret {
+  int o;
+  int y;
+};
+
+struct counting_ret counting (struct counting_mem* mem, int tic, int toc) {
+  int aux__4;
+  int aux__3;
+  int aux__2;
+  int aux__1;
+  int v;
+  struct counting_ret ret_;
+  enum inductive_bool switch_1;
+  enum inductive_bool switch_2;
+  enum inductive_bool switch_3;
+  
+  switch (toc) {
+    case TRUE: {
+      switch_1 = 1;
+      break;
+    }
+    case FALSE: {
+      switch_1 = 0;
+      break;
+    }
+  };
+  v = switch_1;
+  aux__1 = 0;
+  aux__2 = mem->aux__2_next2;
+  aux__4 = mem->aux__4_next1;
+  switch (aux__2) {
+    case TRUE: {
+      switch_3 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_3 = (aux__4 + v);
+      break;
+    }
+  };
+  switch (tic) {
+    case TRUE: {
+      switch_2 = v;
+      break;
+    }
+    case FALSE: {
+      switch_2 = switch_3;
+      break;
+    }
+  };
+  ret_.o = switch_2;
+  ret_.y = v;
+  aux__3 = ret_.o;
+  mem->aux__2_next2 = aux__1;
+  mem->aux__4_next1 = aux__3;
+  return ret_;
+}
+
+struct main0_mem {
+  struct counting_mem counting_mem1;
+};
+
+void main0_init (struct main0_mem* mem) {
+  counting_init(&(mem->counting_mem1));
+}
+
+struct tuple_ty_1 {
+  int tuple_field_1;
+  int tuple_field_2;
+};
+
+int main0 (struct main0_mem* mem, int x) {
+  int aux__5;
+  int aux__6;
+  int y;
+  int z;
+  int o;
+  enum inductive_bool switch_4;
+  struct counting_ret call_1;
+  struct tuple_ty_1 tuple_ty_1__;
+  
+  switch (x) {
+    case TRUE: {
+      switch_4 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_4 = 1;
+      break;
+    }
+  };
+  o = switch_4;
+  call_1 = counting(&(mem->counting_mem1), x, x);
+  aux__5 = call_1.o;
+  aux__6 = call_1.y;
+  tuple_ty_1__.tuple_field_1 = aux__5;
+  tuple_ty_1__.tuple_field_2 = aux__6;
+  y = tuple_ty_1__.tuple_field_1;
+  z = tuple_ty_1__.tuple_field_2;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  struct main0_mem mem;
+  int argv_0;
+  int res;
+  
+  main0_init(&(mem));
+  while (1) {
+    argv_0 = int_read();
+    res = main0(&(mem), argv_0);
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

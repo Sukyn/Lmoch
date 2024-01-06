@@ -1,0 +1,516 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur(lo : int;hi : int) returns (x : int);
+var state : t;
+let
+  (state) = (Chaud't) -> (pre (merge state 
+                                 (Chaud't -> ite(ge(x, hi), Froid't, Chaud't))
+                                 (Froid't -> ite(le(x, lo), Chaud't, Froid't))));
+  (x) = merge state 
+          (Chaud't -> add((0) -> (pre (x)), 1) when Chaud(state))
+          (Froid't -> sub((0) -> (pre (x)), 1) when Froid(state));
+tel
+
+node main0() returns (o : int);
+var ;
+let
+  (o) = oscillateur(sub(5), 5);
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur__5(lo__3 : int; hi__4 : int) returns (x__1 : int)
+var state__2: t;
+let
+  (state__2) = ite(true fby false, Chaud't,
+               default(t) fby merge state__2 
+                                (Chaud't -> ite(ge(x__1, hi__4), Froid't,
+                                Chaud't))
+                                (Froid't -> ite(le(x__1, lo__3), Chaud't,
+                                Froid't)));
+  (x__1) = merge state__2 
+             (Chaud't -> add(ite(true fby false, 0, 0 fby x__1),
+                         1) when Chaud(state__2))
+             (Froid't -> sub(ite(true fby false, 0, 0 fby x__1),
+                         1) when Froid(state__2));
+tel
+
+node main0__7() returns (o__6 : int)
+var ;
+let
+  (o__6) = oscillateur__5(sub(5), 5);
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur__5(lo__3 : int; hi__4 : int) returns (x__1 : int)
+var aux'16__23: int; aux'15__22: int; aux'14__21: bool; aux'13__20: bool;
+    aux'12__19: int; aux'11__18: int; aux'10__17: bool; aux'9__16: bool;
+    aux'8__15: t; aux'7__14: t; aux'6__13: bool; aux'5__12: bool;
+    aux'4__11: bool; aux'3__10: bool; aux'2__9: bool; aux'1__8: bool;
+    state__2: t;
+let
+  (aux'8__15) = default(t) fby aux'7__14;
+  (aux'7__14) = merge state__2 
+                  (Chaud't -> merge ge(x__1,
+                              hi__4) 
+                                (true -> Froid't when True(aux'3__10))
+                                (false -> Chaud't when False(aux'4__11)))
+                  (Froid't -> merge le(x__1,
+                              lo__3) 
+                                (true -> Chaud't when True(aux'5__12))
+                                (false -> Froid't when False(aux'6__13)));
+  (aux'6__13) = le(x__1, lo__3);
+  (aux'5__12) = le(x__1, lo__3);
+  (aux'4__11) = ge(x__1, hi__4);
+  (aux'3__10) = ge(x__1, hi__4);
+  (aux'2__9) = true fby aux'1__8;
+  (aux'1__8) = false;
+  (state__2) = merge aux'2__9 
+                 (true -> Chaud't when True(aux'2__9))
+                 (false -> aux'8__15 when False(aux'2__9));
+  (aux'16__23) = 0 fby aux'15__22;
+  (aux'15__22) = x__1;
+  (aux'14__21) = true fby aux'13__20;
+  (aux'13__20) = false;
+  (aux'12__19) = 0 fby aux'11__18;
+  (aux'11__18) = x__1;
+  (aux'10__17) = true fby aux'9__16;
+  (aux'9__16) = false;
+  (x__1) = merge state__2 
+             (Chaud't -> add(merge aux'10__17 
+                               (true -> 0 when True(aux'10__17))
+                               (false -> aux'12__19 when False(aux'10__17)),
+                         1) when Chaud(state__2))
+             (Froid't -> sub(merge aux'14__21 
+                               (true -> 0 when True(aux'14__21))
+                               (false -> aux'16__23 when False(aux'14__21)),
+                         1) when Froid(state__2));
+tel
+
+node main0__7() returns (o__6 : int)
+var aux'17__24: int;
+let
+  (aux'17__24) = oscillateur__5(sub(5), 5);
+  (o__6) = aux'17__24;
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur__5(lo__3 : int :: Base, hi__4 : int :: Base)
+  returns (x__1 : int :: Base)
+var aux'16__23 : int :: Base, aux'15__22 : int :: Base, aux'14__21 : bool :: Base, 
+    aux'13__20 : bool :: Base, aux'12__19 : int :: Base, aux'11__18 : int :: Base, 
+    aux'10__17 : bool :: Base, aux'9__16 : bool :: Base, aux'8__15 : t :: Base, 
+    aux'7__14 : t :: Base, aux'6__13 : bool :: Base, aux'5__12 : bool :: Base, 
+    aux'4__11 : bool :: Base, aux'3__10 : bool :: Base, aux'2__9 : bool :: Base, 
+    aux'1__8 : bool :: Base, state__2 : t :: Base;
+let
+  (aux'8__15) = default(t) fby aux'7__14;
+  (aux'7__14) = merge state__2 
+                (Chaud't -> merge ge(x__1, hi__4) 
+                (true -> Froid't when True(aux'3__10))
+                (false -> Chaud't when False(aux'4__11)))
+                (Froid't -> merge le(x__1, lo__3) 
+                (true -> Chaud't when True(aux'5__12))
+                (false -> Froid't when False(aux'6__13)));
+  (aux'6__13) = le(x__1, lo__3);
+  (aux'5__12) = le(x__1, lo__3);
+  (aux'4__11) = ge(x__1, hi__4);
+  (aux'3__10) = ge(x__1, hi__4);
+  (aux'2__9) = true fby aux'1__8;
+  (aux'1__8) = false;
+  (state__2) = merge aux'2__9 
+               (true -> Chaud't when True(aux'2__9))
+               (false -> aux'8__15 when False(aux'2__9));
+  (aux'16__23) = 0 fby aux'15__22;
+  (aux'15__22) = x__1;
+  (aux'14__21) = true fby aux'13__20;
+  (aux'13__20) = false;
+  (aux'12__19) = 0 fby aux'11__18;
+  (aux'11__18) = x__1;
+  (aux'10__17) = true fby aux'9__16;
+  (aux'9__16) = false;
+  (x__1) = merge state__2 
+           (Chaud't -> add(merge aux'10__17 
+                          (true -> 0 when True(aux'10__17))
+                          (false -> aux'12__19 when False(aux'10__17)), 1) when Chaud(state__2))
+           (Froid't -> sub(merge aux'14__21 
+                          (true -> 0 when True(aux'14__21))
+                          (false -> aux'16__23 when False(aux'14__21)), 1) when Froid(state__2))
+tel
+node main0__7()
+  returns (o__6 : int :: Base)
+var aux'17__24 : int :: Base;
+let
+  (aux'17__24) = oscillateur__5(sub(5), 5);
+  (o__6) = aux'17__24
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur__5(lo__3 : int :: Base, hi__4 : int :: Base)
+  returns (x__1 : int :: Base)
+var aux'16__23 : int :: Base, aux'15__22 : int :: Base, aux'14__21 : bool :: Base, 
+    aux'13__20 : bool :: Base, aux'12__19 : int :: Base, aux'11__18 : int :: Base, 
+    aux'10__17 : bool :: Base, aux'9__16 : bool :: Base, aux'8__15 : t :: Base, 
+    aux'7__14 : t :: Base, aux'6__13 : bool :: Base, aux'5__12 : bool :: Base, 
+    aux'4__11 : bool :: Base, aux'3__10 : bool :: Base, aux'2__9 : bool :: Base, 
+    aux'1__8 : bool :: Base, state__2 : t :: Base;
+let
+  (aux'1__8) = false;
+  (aux'2__9) = true fby aux'1__8;
+  (aux'8__15) = default(t) fby aux'7__14;
+  (aux'9__16) = false;
+  (aux'10__17) = true fby aux'9__16;
+  (aux'12__19) = 0 fby aux'11__18;
+  (aux'13__20) = false;
+  (aux'14__21) = true fby aux'13__20;
+  (aux'16__23) = 0 fby aux'15__22;
+  (state__2) = merge aux'2__9 
+               (true -> Chaud't when True(aux'2__9))
+               (false -> aux'8__15 when False(aux'2__9));
+  (x__1) = merge state__2 
+           (Chaud't -> add(merge aux'10__17 
+                          (true -> 0 when True(aux'10__17))
+                          (false -> aux'12__19 when False(aux'10__17)), 1) when Chaud(state__2))
+           (Froid't -> sub(merge aux'14__21 
+                          (true -> 0 when True(aux'14__21))
+                          (false -> aux'16__23 when False(aux'14__21)), 1) when Froid(state__2));
+  (aux'3__10) = ge(x__1, hi__4);
+  (aux'4__11) = ge(x__1, hi__4);
+  (aux'5__12) = le(x__1, lo__3);
+  (aux'6__13) = le(x__1, lo__3);
+  (aux'7__14) = merge state__2 
+                (Chaud't -> merge ge(x__1, hi__4) 
+                (true -> Froid't when True(aux'3__10))
+                (false -> Chaud't when False(aux'4__11)))
+                (Froid't -> merge le(x__1, lo__3) 
+                (true -> Chaud't when True(aux'5__12))
+                (false -> Froid't when False(aux'6__13)));
+  (aux'11__18) = x__1;
+  (aux'15__22) = x__1
+tel
+node main0__7()
+  returns (o__6 : int :: Base)
+var aux'17__24 : int :: Base;
+let
+  (aux'17__24) = oscillateur__5(sub(5), 5);
+  (o__6) = aux'17__24
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+type t =
+  | Chaud
+  | Froid
+
+node oscillateur__5(lo__3 : int :: Base, hi__4 : int :: Base)
+  returns (x__1 : int :: Base)
+var aux'16__23 : int :: Base, aux'15__22 : int :: Base, aux'14__21 : bool :: Base, 
+    aux'13__20 : bool :: Base, aux'12__19 : int :: Base, aux'11__18 : int :: Base, 
+    aux'10__17 : bool :: Base, aux'9__16 : bool :: Base, aux'8__15 : t :: Base, 
+    aux'7__14 : t :: Base, aux'6__13 : bool :: Base, aux'5__12 : bool :: Base, 
+    aux'4__11 : bool :: Base, aux'3__10 : bool :: Base, aux'2__9 : bool :: Base, 
+    aux'1__8 : bool :: Base, state__2 : t :: Base;
+  mem={node=[]
+       fby=[aux'2_next6__30 : bool :: Base, aux'8_next5__29 : t :: Base, 
+            aux'10_next4__28 : bool :: Base, aux'12_next3__27 : int :: Base, 
+            aux'14_next2__26 : bool :: Base, aux'16_next1__25 : int :: Base]}
+  init={node=[]
+        fby=[(aux'2_next6__30,true), (aux'8_next5__29,default(t)), (aux'10_next4__28,true), (aux'12_next3__27,0), (aux'14_next2__26,true), (aux'16_next1__25,0)]}
+  compute={(aux'1__8 : bool :: Base) = false;
+           (aux'2__9 : bool :: Base) = aux'2_next6__30;
+           (aux'8__15 : t :: Base) = aux'8_next5__29;
+           (aux'9__16 : bool :: Base) = false;
+           (aux'10__17 : bool :: Base) = aux'10_next4__28;
+           (aux'12__19 : int :: Base) = aux'12_next3__27;
+           (aux'13__20 : bool :: Base) = false;
+           (aux'14__21 : bool :: Base) = aux'14_next2__26;
+           (aux'16__23 : int :: Base) = aux'16_next1__25;
+           (state__2 : t :: Base) = case(aux'2__9)True'inductive_bool: Chaud't;
+                                                    False'inductive_bool: aux'8__15;
+           (x__1 : int :: Base) = case(state__2)Chaud't: add(case(aux'10__17)
+                                                         True'inductive_bool: 0;
+                                                           False'inductive_bool: aux'12__19,
+                                                         1);
+                                                  Froid't: sub(case(aux'14__21)
+                                                           True'inductive_bool: 0;
+                                                             False'inductive_bool: aux'16__23,
+                                                           1);
+           (aux'3__10 : bool :: Base) = ge(x__1, hi__4);
+           (aux'4__11 : bool :: Base) = ge(x__1, hi__4);
+           (aux'5__12 : bool :: Base) = le(x__1, lo__3);
+           (aux'6__13 : bool :: Base) = le(x__1, lo__3);
+           (aux'7__14 : t :: Base) = case(state__2)Chaud't: case(ge(x__1,
+                                                                 hi__4))
+                                                     True'inductive_bool: Froid't;
+                                                       False'inductive_bool: Chaud't;
+                                                     Froid't: case(le(x__1,
+                                                                   lo__3))
+                                                     True'inductive_bool: Chaud't;
+                                                       False'inductive_bool: Froid't;
+           (aux'11__18 : int :: Base) = x__1;
+           (aux'15__22 : int :: Base) = x__1}
+  update={(aux'2_next6__30,aux'1__8);
+          (aux'8_next5__29,aux'7__14);
+          (aux'10_next4__28,aux'9__16);
+          (aux'12_next3__27,aux'11__18);
+          (aux'14_next2__26,aux'13__20);
+          (aux'16_next1__25,aux'15__22)}
+  
+node main0__7()
+  returns (o__6 : int :: Base)
+var aux'17__24 : int :: Base;
+  mem={node=[(oscillateur_mem1__31,oscillateur__5)]
+       fby=[]}
+  init={node=[(oscillateur_mem1__31,oscillateur__5)]
+        fby=[]}
+  compute={(aux'17__24 : int :: Base) = oscillateur__5 <- oscillateur_mem1__31(
+                                        sub(5), 5);
+           (o__6 : int :: Base) = aux'17__24}
+  update={}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+enum t {
+  CHAUD,
+  FROID
+};
+
+struct oscillateur_mem {
+
+  int aux__2_next6;
+  enum t aux__8_next5;
+  int aux__10_next4;
+  int aux__12_next3;
+  int aux__14_next2;
+  int aux__16_next1;
+};
+
+void oscillateur_init (struct oscillateur_mem* mem) {
+  mem->aux__2_next6 = 1;
+  mem->aux__8_next5 = CHAUD;
+  mem->aux__10_next4 = 1;
+  mem->aux__12_next3 = 0;
+  mem->aux__14_next2 = 1;
+  mem->aux__16_next1 = 0;
+}
+
+int oscillateur (struct oscillateur_mem* mem, int lo, int hi) {
+  int aux__16;
+  int aux__15;
+  int aux__14;
+  int aux__13;
+  int aux__12;
+  int aux__11;
+  int aux__10;
+  int aux__9;
+  enum t aux__8;
+  enum t aux__7;
+  int aux__6;
+  int aux__5;
+  int aux__4;
+  int aux__3;
+  int aux__2;
+  int aux__1;
+  enum t state;
+  int x;
+  enum inductive_bool switch_1;
+  enum t switch_2;
+  enum inductive_bool switch_3;
+  enum inductive_bool switch_4;
+  enum t switch_5;
+  enum inductive_bool switch_6;
+  enum inductive_bool switch_7;
+  
+  aux__1 = 0;
+  aux__2 = mem->aux__2_next6;
+  aux__8 = mem->aux__8_next5;
+  aux__9 = 0;
+  aux__10 = mem->aux__10_next4;
+  aux__12 = mem->aux__12_next3;
+  aux__13 = 0;
+  aux__14 = mem->aux__14_next2;
+  aux__16 = mem->aux__16_next1;
+  switch (aux__2) {
+    case TRUE: {
+      switch_1 = CHAUD;
+      break;
+    }
+    case FALSE: {
+      switch_1 = aux__8;
+      break;
+    }
+  };
+  state = switch_1;
+  switch (aux__10) {
+    case TRUE: {
+      switch_3 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_3 = aux__12;
+      break;
+    }
+  };
+  switch (aux__14) {
+    case TRUE: {
+      switch_4 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_4 = aux__16;
+      break;
+    }
+  };
+  switch (state) {
+    case CHAUD: {
+      switch_2 = (switch_3 + 1);
+      break;
+    }
+    case FROID: {
+      switch_2 = (switch_4 - 1);
+      break;
+    }
+  };
+  x = switch_2;
+  aux__3 = (x >= hi);
+  aux__4 = (x >= hi);
+  aux__5 = (x <= lo);
+  aux__6 = (x <= lo);
+  switch ((x >= hi)) {
+    case TRUE: {
+      switch_6 = FROID;
+      break;
+    }
+    case FALSE: {
+      switch_6 = CHAUD;
+      break;
+    }
+  };
+  switch ((x <= lo)) {
+    case TRUE: {
+      switch_7 = CHAUD;
+      break;
+    }
+    case FALSE: {
+      switch_7 = FROID;
+      break;
+    }
+  };
+  switch (state) {
+    case CHAUD: {
+      switch_5 = switch_6;
+      break;
+    }
+    case FROID: {
+      switch_5 = switch_7;
+      break;
+    }
+  };
+  aux__7 = switch_5;
+  aux__11 = x;
+  aux__15 = x;
+  mem->aux__2_next6 = aux__1;
+  mem->aux__8_next5 = aux__7;
+  mem->aux__10_next4 = aux__9;
+  mem->aux__12_next3 = aux__11;
+  mem->aux__14_next2 = aux__13;
+  mem->aux__16_next1 = aux__15;
+  return x;
+}
+
+struct main0_mem {
+  struct oscillateur_mem oscillateur_mem1;
+};
+
+void main0_init (struct main0_mem* mem) {
+  oscillateur_init(&(mem->oscillateur_mem1));
+}
+
+int main0 (struct main0_mem* mem) {
+  int aux__17;
+  int o;
+  int call_1;
+  
+  call_1 = oscillateur(&(mem->oscillateur_mem1), -(5), 5);
+  aux__17 = call_1;
+  o = aux__17;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  struct main0_mem mem;
+  int res;
+  
+  main0_init(&(mem));
+  while (1) {
+    res = main0(&(mem));
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

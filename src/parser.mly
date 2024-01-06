@@ -1,227 +1,289 @@
 %{
+open Asttypes
+open Parse_ast
 
-  open Asttypes
-  open Parse_ast
+exception RedefinitionError of positionRange * string
 
-  let mk_expr l e = { pexpr_desc = e; pexpr_loc = l }
-  let mk_patt l p = { ppatt_desc = p; ppatt_loc = l }
+(* Helper functions to create expressions and patterns *)
+let make_expr descriptor location = { PExpr.desc = descriptor; PExpr.loc = location; }
+let make_pattern descriptor location = { PPattern.desc = descriptor; PPattern.loc = location }
+let make_expr_with_operator operator expressions location = make_expr (Op (operator, expressions)) location
+
+(* Hashtable to track type and constructor mappings *)
+(* A small prime number is chosen for the hashtable size, as we don't expect large numbers of types or constructors *)
+let constructorToTypeMap = Hashtbl.create 11
+let typeToConstructorMap = Hashtbl.create 11
+let nodeMap = Hashtbl.create 11
+
+(* Function to check for existing keys in a hashtable and add new key-value pairs *)
+let generate_error_message key = Printf.sprintf "Redefinition error: %s is already defined." key
+
+let check_and_add_to_map hashtable key value location =
+    if Hashtbl.mem hashtable key then
+        raise (RedefinitionError (location, generate_error_message key))
+    else
+        Hashtbl.add hashtable key value
 
 %}
-
-%token AND
-%token ARROW
-%token BOOL
-%token CONST
-%token COLON
-%token COMMA
-%token <Asttypes.op> COMP
+(* Token declarations *)
 %token <bool> CONST_BOOL
 %token <int> CONST_INT
 %token <float> CONST_REAL
-%token DIV
-%token ELSE
+%token <string> IDENT
+%token BOOL, REAL, INT
+%token AND, OR, NOT, IMPL
+%token EQUAL, NEQ
+%token MINUS, PLUS, DIV, MOD, STAR
+%token ARROW
+%token BAR
+%token COLON, SEMICOL, COMMA
+%token <Asttypes.operator> COMP
+%token IF, THEN, ELSE
 %token END
 %token EOF
-%token EQUAL
-%token NEQ
-%token REAL
-%token <string> IDENT
-%token IF
-%token IMPL
-%token INT
-%token LET
-%token LPAREN
-%token MINUS
-%token MOD
+%token <string * string> CONST_ENUMERATED
 %token NODE
-%token NOT
-%token OR
-%token FBY
-%token PLUS
-%token PRE
-%token MERGE
+%token LET, TEL
+%token LPAREN, RPAREN
+%token PRE, FBY
 %token RETURNS
-%token RPAREN
-%token SEMICOL
 %token SLASH
-%token STAR
-%token TEL
-%token THEN
-%token WHEN
-%token WHENOT
 %token VAR
+%token MERGE, WHEN, WHENOT
+%token EVERY, RESET
+%token AUTOMATON
+%token UNTIL, CONTINUE
+%token TYPE
+%token <string> CONSTR
 
-
-%nonassoc THEN
+(* Precedence and associativity declarations *)
 %nonassoc ELSE
 %right ARROW
 %left IMPL
 %left OR
 %left AND
-%left COMP EQUAL NEQ                          /* < <= > >= <> = <> */
-%left PLUS MINUS                              /* + -  */
-%left STAR SLASH DIV MOD                      /* * /  mod */
-%nonassoc uminus                              /* - */
-%nonassoc NOT PRE                             /* not pre */
+%right WHEN WHENOT
+%left COMP EQUAL NEQ
+%left PLUS MINUS
+%left STAR SLASH DIV MOD
+%nonassoc NOT PRE EVERY
 %right FBY
-%left DOT
 
-/* Point d'entr�e */
-
+(* Start symbol and production rules *)
 %start file
-%type <Parse_ast.p_file> file
+%type <Parse_ast.parsed_file_type> file
 
 %%
 
-file: node_decs EOF { $1 }
+(* Production rules for file, type declarations, and node declarations *)
+(* Detailed comments are provided above each rule for clarity *)
+
+(* File production rule *)
+file: type_decs node_decs EOF
+  { { additional_types = $1 ; nodes = $2} }
 ;
 
+(* Type declarations *)
+type_decs:
+| /* empty */       { [] }
+| new_type type_decs    { $1 :: $2 }
+;
+
+
+(* Type declaration *)
+new_type:
+| TYPE IDENT EQUAL BAR? separated_list(BAR, CONSTR)
+  { check_and_add_to_map typeToConstructorMap $2 $5 $sloc;
+    List.iter (fun e ->
+       check_and_add_to_map constructorToTypeMap  e $2 $sloc) $5;
+    {name = $2; constructors = $5} }
+;
+
+(* Node declarations *)
 node_decs:
 | /* empty */       { [] }
 | node node_decs    { $1 :: $2 }
 ;
 
 
+(* Node declaration rule. This rule parses a node declaration, which consists of 
+   the keyword NODE, an identifier, a list of input parameters, the keyword RETURNS, 
+   a list of output parameters, a list of local parameters, and a list of equations. *)
 node:
 | NODE IDENT LPAREN in_params RPAREN
   RETURNS LPAREN out_params RPAREN SEMICOL
   local_params
   LET eq_list TEL semi_opt
-    { { pn_name = $2;
-	pn_input = $4;
-	pn_output = $8;
-	pn_local = $11;
-	pn_equs = $13;
-	pn_loc = $sloc; } }
+    {  if Hashtbl.mem nodeMap $2 then raise (RedefinitionError ($sloc, $2));
+      Hashtbl.add nodeMap $2 ();
+    { 
+    node_name = $2;
+    node_inputs = $4;
+    node_outputs = $8;
+    node_localvars = $11;
+    node_equs = $13;
+    node_location = $sloc; } }
 ;
 
-in_params:
-| /* empty */
-    { [] }
-| param_list
-    { $1 }
-;
 
+(* Parameter lists *)
+in_params: 
+| /* empty */ { [] }
+| param_list { $1 }
+;
 
 out_params:
-| param_list
-    { $1 }
+| /* empty */ { [] }
+| param_list { $1 }
 ;
 
 local_params:
-| /* empty */
-    { [] }
-| VAR param_list_semicol
-    { $2 }
+| /* empty */ { [] }
+| VAR param_semicol_list { $2 }
+;
+
+param_with_semicol:
+| ident_comma_list COLON typ SEMICOL
+    { let typ = $3 in
+      List.map (fun id -> (id, typ)) $1 }
 ;
 
 param_list:
-| param
+| param_with_semicol param_list
+    { $1 @ $2 }
+| ident_comma_list COLON typ
+    { let typ = $3 in
+      List.map (fun id -> (id, typ)) $1 }
+;
+
+param_semicol_list:
+| param_with_semicol param_semicol_list
+    { $1 @ $2 }
+| param_with_semicol
     { $1 }
-| param SEMICOL param_list
-    { $1 @ $3 }
 ;
 
-param_list_semicol:
-| param  SEMICOL
-    { $1 }
-| param SEMICOL param_list_semicol
-    { $1 @ $3 }
-;
-
-
-param:
-  | ident_comma_list COLON typ
-      { let typ = $3 in
-        List.map (fun id -> (id, typ)) $1 }
-;
-
+(* Equation lists *)
 eq_list:
-| eq
-    { [$1] }
-| eq eq_list
-    { $1 :: $2 }
+| eq eq_list { $1 :: $2 }
+| eq { [$1] }
 ;
 
 eq:
 | pattern EQUAL expr SEMICOL
-    { { peq_patt = $1; peq_expr = $3; } }
+    { Eq { pattern = $1; expr = $3; } }
+| AUTOMATON list(case_autom) END semi_opt
+    { Automaton ({core_automaton = $2; loc_automaton = $sloc}) }
 ;
 
+case_autom:
+| BAR CONSTR ARROW eq outlist
+  { let cond, out = $5 in
+    { case_automaton = {case_type = $2; case_equation = $4; case_location = $sloc}; 
+      cond_automaton=cond; 
+      out_automaton=out}  }
+;
+
+outlist:
+| { [], [] }
+| UNTIL expr CONTINUE CONSTR outlist
+  { let cond, out = $5 in
+    $2 :: cond, $4 :: out}
+;
+
+
+(* Patterns *)
 pattern:
 | IDENT
-    { mk_patt $sloc (PP_ident $1) }
+    { make_pattern (PPattern.Ident $1) $sloc}
+| LPAREN IDENT RPAREN
+    { make_pattern (PPattern.Ident $2) $sloc}
 | LPAREN IDENT COMMA ident_comma_list RPAREN
-    { mk_patt $sloc (PP_tuple($2::$4)) }
+    { make_pattern (PPattern.Tuple($2::$4)) $sloc}
 ;
+
+
 
 expr:
 | LPAREN expr RPAREN
     { $2 }
 | const
-    { mk_expr $sloc (PE_const $1) }
+    { make_expr (Const $1) $sloc }
 | IDENT
-    { mk_expr $sloc (PE_ident $1)}
-| IDENT LPAREN expr_comma_list_empty RPAREN
-    { mk_expr $sloc (PE_app ($1, $3))}
+    { make_expr (Ident $1) $sloc }
+| IDENT LPAREN expr_comma_list RPAREN
+    { make_expr (App ($1, $3)) $sloc}
 | IF expr THEN expr ELSE expr
-    { mk_expr $sloc (PE_op (Op_if, [$2; $4; $6])) }
-| MERGE IDENT list(merge_branche)
-    {   let ident = mk_expr $loc($2) (PE_ident $2) in
-        mk_expr $sloc (PE_merge (ident, $3)) }
+    { make_expr_with_operator Op_if [$2; $4; $6] $sloc}
 | expr PLUS expr
-    { mk_expr $sloc (PE_op (Op_add, [$1; $3])) }
-| expr WHENOT expr
-    { mk_expr $sloc (PE_when ($1, false, $3)) }
-| expr WHEN expr
-    { mk_expr $sloc (PE_when ($1, true, $3)) }
+    { make_expr_with_operator Op_add [$1; $3] $sloc}
 | expr MINUS expr
-    { mk_expr $sloc (PE_op (Op_sub, [$1; $3])) }
+    { make_expr_with_operator Op_sub [$1; $3] $sloc}
 | expr STAR expr
-    { mk_expr $sloc (PE_op (Op_mul, [$1; $3])) }
+    { make_expr_with_operator Op_mul [$1; $3] $sloc}
 | expr SLASH expr
-    { mk_expr $sloc (PE_op (Op_div, [$1; $3])) }
+    { make_expr_with_operator Op_div [$1; $3] $sloc}
 | expr DIV expr
-    { mk_expr $sloc (PE_op (Op_div, [$1; $3])) }
+    { make_expr_with_operator Op_div [$1; $3] $sloc}
 | expr MOD expr
-    { mk_expr $sloc (PE_op (Op_mod, [$1; $3])) }
+    { make_expr_with_operator Op_mod [$1; $3] $sloc}
 | expr COMP expr
-    { mk_expr $sloc (PE_op ($2, [$1; $3])) }
+    { make_expr_with_operator $2 [$1; $3] $sloc}
 | expr EQUAL expr
-    { mk_expr $sloc (PE_op (Op_eq, [$1; $3])) }
+    { make_expr_with_operator Op_eq [$1; $3] $sloc}
 | expr NEQ expr
-    { mk_expr $sloc (PE_op (Op_neq, [$1; $3])) }
+    { make_expr_with_operator Op_neq [$1; $3] $sloc}
 | expr AND expr
-    { mk_expr $sloc (PE_op (Op_and, [$1; $3])) }
+    { make_expr_with_operator Op_and [$1; $3] $sloc}
 | expr OR expr
-    { mk_expr $sloc (PE_op (Op_or, [$1; $3])) }
+    { make_expr_with_operator Op_or [$1; $3] $sloc}
 | expr IMPL expr
-    { mk_expr $sloc (PE_op (Op_impl, [$1; $3])) }
+    { make_expr_with_operator Op_impl [$1; $3] $sloc}
 | expr ARROW expr
-    { mk_expr $sloc (PE_arrow ($1, $3)) }
+    { make_expr (Arrow ($1, $3))  $sloc}
 | expr FBY expr
-    { mk_expr $sloc (PE_fby ($1, $3)) }
-| MINUS expr /* %prec uminus */
-    { mk_expr $sloc (PE_op (Op_sub, [$2])) }
+    { make_expr (Arrow ($1, make_expr (Pre ($3)) $sloc))  $sloc}
+| MINUS expr 
+    { make_expr_with_operator Op_sub [$2] $sloc}
 | NOT expr
-    { mk_expr $sloc (PE_op (Op_not, [$2])) }
+    { make_expr_with_operator Op_not [$2] $sloc}
 | PRE expr
-    { mk_expr $sloc (PE_pre ($2)) }
-| LPAREN expr COMMA expr_comma_list RPAREN
-    { mk_expr $sloc (PE_tuple ($2::$4)) }
+    { make_expr (Pre ($2))  $sloc}
+| LPAREN expr COMMA expr_comma_tail RPAREN
+    { make_expr (Tuple ($2::$4))  $sloc}
+| MERGE IDENT list(merge_branche)
+    { let ident = make_expr (Ident $2) $loc($2) in
+      make_expr (Merge (ident, $3)) $sloc }
+(* When with Enumerated types *)
+| expr WHEN CONSTR LPAREN expr RPAREN
+    { make_expr (When ($1, $3, $5)) $sloc }
+(* Basic When & Whenot : Boolean types *)
+| expr WHEN expr
+    { make_expr (When ($1, "True", $3)) $sloc }
+| expr WHENOT expr
+    { make_expr (When ($1, "False", $3)) $sloc }
+| RESET IDENT LPAREN expr_comma_list RPAREN EVERY expr
+    { make_expr (Reset ($2, $4, $7)) $sloc }
 ;
 
 merge_branche:
- LPAREN const ARROW expr RPAREN { (mk_expr $loc($2) (PE_const $2), $4) }
+ LPAREN const ARROW expr RPAREN { (make_expr (Const $2) $loc($2), $4) }
 ;
 
+(* Constants *)
 const:
 | CONST_BOOL
-    { (Cbool $1) }
+    { BooleanConstant $1 }
 | CONST_INT
-    { (Cint $1) }
+    { IntegerConstant $1 }
 | CONST_REAL
-    { (Creal $1) }
+    { RealConstant $1 }
+| CONST_ENUMERATED
+    { let condition, typ = $1 in
+      EnumeratedDataConstant (typ, Some condition) }
+| CONSTR
+    { let typ = Hashtbl.find constructorToTypeMap  $1 in
+      EnumeratedDataConstant (typ, Some $1) }
 ;
 
 ident_comma_list:
@@ -230,21 +292,22 @@ ident_comma_list:
 | IDENT { [$1] }
 ;
 
-expr_comma_list_empty:
-    { [] }
-| expr_comma_list { $1 }
+expr_comma_list:
+|    { [] }
+| expr expr_comma_tail { $1 :: $2 }
 ;
 
-expr_comma_list:
-| expr COMMA expr_comma_list
-    { $1 :: $3 }
-| expr { [$1] }
+expr_comma_tail:
+| COMMA expr expr_comma_tail
+    { $2 :: $3 }
+| { [] }
 ;
 
 typ:
-| BOOL   { Tbool }
-| INT    { Tint }
-| REAL   { Treal }
+| BOOL   { BooleanType }
+| INT    { IntegerType }
+| REAL   { RealType }
+| IDENT  { EnumeratedDataType $1 }
 ;
 
 semi_opt:

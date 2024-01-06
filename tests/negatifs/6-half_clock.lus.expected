@@ -1,0 +1,52 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0(x : int) returns (o : bool);
+var half : bool;n : int;
+let
+  (half) = (true) -> (~(pre (half)));
+  (n) = add(x, x when True(half));
+  (o) = true;
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__5(x__4 : int) returns (o__1 : bool)
+var half__2: bool; n__3: int;
+let
+  (half__2) = ite(true fby false, true, ~(false fby half__2));
+  (n__3) = add(x__4, x__4 when True(half__2));
+  (o__1) = true;
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node main0__5(x__4 : int) returns (o__1 : bool)
+var aux'4__9: bool; aux'3__8: bool; aux'2__7: bool; aux'1__6: bool;
+    half__2: bool; n__3: int;
+let
+  (aux'4__9) = false fby aux'3__8;
+  (aux'3__8) = half__2;
+  (aux'2__7) = true fby aux'1__6;
+  (aux'1__6) = false;
+  (half__2) = or(aux'2__7, ~(aux'4__9));
+  (n__3) = add(x__4, x__4 when True(half__2));
+  (o__1) = true;
+tel
+
+[31m[1m[Error 1005] Clocking error: [0mThe expected clock is Base, but the actual clock is Base on True(half__2)
+

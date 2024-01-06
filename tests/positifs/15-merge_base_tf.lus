@@ -1,0 +1,14 @@
+/* pareil que ./15-merge_base.lus mais avec un bool */
+
+node main0 () returns (o : int);
+var tmp : bool;
+let
+  tmp = true fby
+        (merge tmp
+          (true -> false when True(tmp))
+          (false -> true when False(tmp)));
+
+  o = 0 -> merge tmp
+        (true -> pre o)
+        (false -> pre o + 1);
+tel

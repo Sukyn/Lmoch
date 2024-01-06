@@ -1,43 +1,94 @@
-(* Arbres de syntaxe abstraite *)
+(* Abstract Syntax Trees *)
 
 open Asttypes
 
+(* Type for identifiers *)
 type ident = string
 
-type p_expr =
-  { pexpr_desc: p_expr_desc;
-    pexpr_loc: location; }
+(* Module for parsed expressions *)
+module PExpr = struct
+  (* Parsed expression description and location *)
+  type t = {
+    desc: desc;
+    loc: positionRange;
+  }
 
-and p_expr_desc =
-  | PE_const of const
-  | PE_ident of ident
-  | PE_op of op * p_expr list
-  | PE_app of ident * p_expr list
-  | PE_arrow of p_expr * p_expr
-  | PE_fby of p_expr * p_expr
-  | PE_merge of p_expr * (p_expr * p_expr) list
-  | PE_when of p_expr * bool * p_expr
-  | PE_pre of p_expr
-  | PE_tuple of p_expr list
+  (* Forms of expression descriptions *)
+  and desc =
+    | Const of const
+    | Ident of ident
+    | Op of operator * t list
+    | App of ident * t list
+    | Arrow of t * t
+    | Pre of t
+    | Tuple of t list
+    | Merge of t * (t * t) list
+    | When of t * string * t
+    | Reset of ident * t list * t
+end
 
-type p_patt =
-  { ppatt_desc: p_patt_desc;
-    ppatt_loc: location; }
+(* Module for parsed patterns *)
+module PPattern = struct
+  (* Parsed pattern description and location *)
+  type t = {
+    desc: desc;
+    loc: positionRange;
+  }
 
-and p_patt_desc =
-  | PP_ident of ident
-  | PP_tuple of ident list
+  (* Forms of pattern descriptions *)
+  and desc =
+    | Ident of ident
+    | Tuple of ident list
+end
 
-type p_equation =
-    { peq_patt: p_patt;
-      peq_expr: p_expr; }
+(* Module for parsed equations *)
+module PEq = struct
+  (* Parsed equation: pattern and expression *)
+  type t = {
+    pattern: PPattern.t;
+    expr: PExpr.t;
+  }
+end
 
-type p_node =
-    { pn_name: ident;
-      pn_input: (ident * base_ty) list;
-      pn_output: (ident * base_ty) list;
-      pn_local: (ident * base_ty) list;
-      pn_equs: p_equation list;
-      pn_loc: location; }
+(* Forms of parsed equations *)
+type parsed_eq_type =
+  | Eq of PEq.t
+  | Automaton of parsed_autom_type
+  | Match of PExpr.t * parsed_case_autom_type list
 
-type p_file = p_node list
+
+(* Parsed automaton: list of cores and location *)
+and parsed_autom_type = {
+  core_automaton: parsed_autom_core_type list;
+  loc_automaton: positionRange;
+}
+
+(* Parsed automaton core: case, conditions, outputs, and weak indicator *)
+and parsed_autom_core_type = {
+  case_automaton: parsed_case_autom_type;
+  cond_automaton: PExpr.t list;
+  out_automaton: string list;
+}
+
+(* Parsed case: constructor, equation, and location *)
+and parsed_case_autom_type = {
+  case_type: string;
+  case_equation: parsed_eq_type;
+  case_location: positionRange;
+}
+
+(* Parsed node: name, inputs, outputs, local variables, equations, and location *)
+type parsed_node_type = {
+  node_name: ident;
+  node_inputs: (ident * basicType) list;
+  node_outputs: (ident * basicType) list;
+  node_localvars: (ident * basicType) list;
+  node_equs: parsed_eq_type list;
+  node_location: positionRange;
+}
+
+(* Parsed file: types, nodes *)
+type parsed_file_type = {
+  additional_types: enumeratedDataType list;
+  nodes: parsed_node_type list;
+}

@@ -1,0 +1,9 @@
+/* Erreur de clock : exemple du cours */
+
+node main0 (x: int) returns (o: bool);
+var half : bool; n : int;
+let
+  half = (true) -> (not (pre half));
+  n = x + (x when half);
+  o = true;
+tel

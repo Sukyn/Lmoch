@@ -1,0 +1,12 @@
+/* pareil que ./15-merge_base_tf.lus mais avec un IF */
+
+node main0 () returns (o : int);
+var tmp : bool;
+let
+  tmp = true fby (if tmp then false else true);
+
+  o = 0 ->
+         if tmp then
+           pre o
+         else (pre o + 1);
+tel

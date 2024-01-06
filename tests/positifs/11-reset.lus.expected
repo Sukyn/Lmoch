@@ -1,0 +1,251 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr() returns (cpt : int);
+var ;
+let
+  (cpt) = add((0) -> (pre (cpt)), 1);
+tel
+
+node main0(i : bool) returns (o : int);
+var ;
+let
+  (o) = incr() every i;
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr__2() returns (cpt__1 : int)
+var ;
+let
+  (cpt__1) = add(ite(true fby false, 0, 0 fby cpt__1), 1);
+tel
+
+node main0__5(i__4 : bool) returns (o__3 : int)
+var ;
+let
+  (o__3) = (incr__2()) every i__4;
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr__2() returns (cpt__1 : int)
+var aux'4__9: int; aux'3__8: int; aux'2__7: bool; aux'1__6: bool;
+let
+  (aux'4__9) = 0 fby aux'3__8;
+  (aux'3__8) = cpt__1;
+  (aux'2__7) = true fby aux'1__6;
+  (aux'1__6) = false;
+  (cpt__1) = add(merge aux'2__7 
+                   (true -> 0 when True(aux'2__7))
+                   (false -> aux'4__9 when False(aux'2__7)),
+             1);
+tel
+
+node main0__5(i__4 : bool) returns (o__3 : int)
+var aux'5__10: int;
+let
+  (aux'5__10) = (incr__2()) every i__4;
+  (o__3) = aux'5__10;
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr__2()
+  returns (cpt__1 : int :: Base)
+var aux'4__9 : int :: Base, aux'3__8 : int :: Base, aux'2__7 : bool :: Base, 
+    aux'1__6 : bool :: Base;
+let
+  (aux'4__9) = 0 fby aux'3__8;
+  (aux'3__8) = cpt__1;
+  (aux'2__7) = true fby aux'1__6;
+  (aux'1__6) = false;
+  (cpt__1) = add(merge aux'2__7 
+                (true -> 0 when True(aux'2__7))
+                (false -> aux'4__9 when False(aux'2__7)), 1)
+tel
+node main0__5(i__4 : bool :: Base)
+  returns (o__3 : int :: Base)
+var aux'5__10 : int :: Base;
+let
+  (aux'5__10) = incr__2(]) every i__4;
+  (o__3) = aux'5__10
+  tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr__2()
+  returns (cpt__1 : int :: Base)
+var aux'4__9 : int :: Base, aux'3__8 : int :: Base, aux'2__7 : bool :: Base, 
+    aux'1__6 : bool :: Base;
+let
+  (aux'1__6) = false;
+  (aux'2__7) = true fby aux'1__6;
+  (aux'4__9) = 0 fby aux'3__8;
+  (cpt__1) = add(merge aux'2__7 
+                (true -> 0 when True(aux'2__7))
+                (false -> aux'4__9 when False(aux'2__7)), 1);
+  (aux'3__8) = cpt__1
+tel
+node main0__5(i__4 : bool :: Base)
+  returns (o__3 : int :: Base)
+var aux'5__10 : int :: Base;
+let
+  (aux'5__10) = incr__2(]) every i__4;
+  (o__3) = aux'5__10
+  tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node incr__2()
+  returns (cpt__1 : int :: Base)
+var aux'4__9 : int :: Base, aux'3__8 : int :: Base, aux'2__7 : bool :: Base, 
+    aux'1__6 : bool :: Base;
+  mem={node=[]
+       fby=[aux'2_next2__12 : bool :: Base, aux'4_next1__11 : int :: Base]}
+  init={node=[]
+        fby=[(aux'2_next2__12,true), (aux'4_next1__11,0)]}
+  compute={(aux'1__6 : bool :: Base) = false;
+           (aux'2__7 : bool :: Base) = aux'2_next2__12;
+           (aux'4__9 : int :: Base) = aux'4_next1__11;
+           (cpt__1 : int :: Base) = add(case(aux'2__7)True'inductive_bool: 0;
+                                                        False'inductive_bool: aux'4__9,
+                                    1);
+           (aux'3__8 : int :: Base) = cpt__1}
+  update={(aux'2_next2__12,aux'1__6);
+          (aux'4_next1__11,aux'3__8)}
+  
+node main0__5(i__4 : bool :: Base)
+  returns (o__3 : int :: Base)
+var aux'5__10 : int :: Base;
+  mem={node=[(incr_mem1__13,incr__2)]
+       fby=[]}
+  init={node=[(incr_mem1__13,incr__2)]
+        fby=[]}
+  compute={(aux'5__10 : int :: Base) = incr__2 <- incr_mem1__13(@]) every i__4;
+           (o__3 : int :: Base) = aux'5__10}
+           update={}
+           
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+struct incr_mem {
+  int aux__2_next2;
+  int aux__4_next1;
+};
+
+void incr_init (struct incr_mem* mem) {
+  mem->aux__2_next2 = 1;
+  mem->aux__4_next1 = 0;
+}
+
+int incr (struct incr_mem* mem) {
+  int aux__4;
+  int aux__3;
+  int aux__2;
+  int aux__1;
+  int cpt;
+  enum inductive_bool switch_1;
+  
+  aux__1 = 0;
+  aux__2 = mem->aux__2_next2;
+  aux__4 = mem->aux__4_next1;
+  switch (aux__2) {
+    case TRUE: {
+      switch_1 = 0;
+      break;
+    }
+    case FALSE: {
+      switch_1 = aux__4;
+      break;
+    }
+  };
+  cpt = (switch_1 + 1);
+  aux__3 = cpt;
+  mem->aux__2_next2 = aux__1;
+  mem->aux__4_next1 = aux__3;
+  return cpt;
+}
+
+struct main0_mem {
+  struct incr_mem incr_mem1;
+};
+
+void main0_init (struct main0_mem* mem) {
+  incr_init(&(mem->incr_mem1));
+}
+
+int main0 (struct main0_mem* mem, int i) {
+  int aux__5;
+  int o;
+  int call_1;
+  
+  if (i) {
+    incr_init(&(mem->incr_mem1));
+  };
+  call_1 = incr(&(mem->incr_mem1));
+  aux__5 = call_1;
+  o = aux__5;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  struct main0_mem mem;
+  int argv_0;
+  int res;
+  
+  main0_init(&(mem));
+  while (1) {
+    argv_0 = int_read();
+    res = main0(&(mem), argv_0);
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

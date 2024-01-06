@@ -1,0 +1,6 @@
+node main0 () returns (o: int);
+var n: int;
+let
+  n = 0 fby n + 1;
+  o = n * n;
+tel

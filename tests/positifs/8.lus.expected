@@ -1,0 +1,221 @@
+/**************************************/
+/* Unsugar automatons a bit */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0() returns (o : int);
+var x : bool;
+let
+  (x) = true;
+  (o) = ite(x, ite(x, 1, 2), 3);
+tel
+
+node main0() returns (o : int);
+var ;
+let
+  (o) = m0();
+tel
+
+/**************************************/
+/* Typed ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0__3() returns (o__1 : int)
+var x__2: bool;
+let
+  (x__2) = true;
+  (o__1) = ite(x__2, ite(x__2, 1, 2), 3);
+tel
+
+node main0__5() returns (o__4 : int)
+var ;
+let
+  (o__4) = m0__3();
+tel
+
+/**************************************/
+/* Normalized ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0__3() returns (o__1 : int)
+var x__2: bool;
+let
+  (x__2) = true;
+  (o__1) = merge x__2 
+             (true -> merge x__2 
+                        (true -> 1 when True(x__2))
+                        (false -> 2 when False(x__2)) when True(x__2))
+             (false -> 3 when False(x__2));
+tel
+
+node main0__5() returns (o__4 : int)
+var aux'1__6: int;
+let
+  (aux'1__6) = m0__3();
+  (o__4) = aux'1__6;
+tel
+
+/**************************************/
+/* Clocked ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0__3()
+  returns (o__1 : int :: Base)
+var x__2 : bool :: Base;
+let
+  (x__2) = true;
+  (o__1) = merge x__2 
+           (true -> merge x__2 
+           (true -> 1 when True(x__2))
+           (false -> 2 when False(x__2)) when True(x__2))
+           (false -> 3 when False(x__2))
+tel
+node main0__5()
+  returns (o__4 : int :: Base)
+var aux'1__6 : int :: Base;
+let
+  (aux'1__6) = m0__3();
+  (o__4) = aux'1__6
+tel
+/**************************************/
+/* Scheduled ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0__3()
+  returns (o__1 : int :: Base)
+var x__2 : bool :: Base;
+let
+  (x__2) = true;
+  (o__1) = merge x__2 
+           (true -> merge x__2 
+           (true -> 1 when True(x__2))
+           (false -> 2 when False(x__2)) when True(x__2))
+           (false -> 3 when False(x__2))
+tel
+node main0__5()
+  returns (o__4 : int :: Base)
+var aux'1__6 : int :: Base;
+let
+  (aux'1__6) = m0__3();
+  (o__4) = aux'1__6
+tel
+/**************************************/
+/* Imp ast */
+/**************************************/
+type inductive_bool =
+  | False
+  | True
+
+node m0__3()
+  returns (o__1 : int :: Base)
+var x__2 : bool :: Base;
+  mem={node=[]
+       fby=[]}
+  init={node=[]
+        fby=[]}
+  compute={(x__2 : bool :: Base) = true;
+           (o__1 : int :: Base) = case(x__2)True'inductive_bool: case(x__2)
+                                              True'inductive_bool: 1;
+                                                False'inductive_bool: 2;
+                                              False'inductive_bool: 3}
+  update={}
+  
+node main0__5()
+  returns (o__4 : int :: Base)
+var aux'1__6 : int :: Base;
+  mem={node=[]
+       fby=[]}
+  init={node=[]
+        fby=[]}
+  compute={(aux'1__6 : int :: Base) = m0__3 <- m0_mem1__7();
+           (o__4 : int :: Base) = aux'1__6}
+  update={}
+  
+/**************************************/
+/* C file */
+/**************************************/
+#include <stdlib.h>
+
+#include <printf.h>
+
+#include <unistd.h>
+
+#include <stdio.h>
+
+int int_read() {
+  int var;
+  scanf("%d", &var);
+  return var;
+}
+
+enum inductive_bool {
+  FALSE,
+  TRUE
+};
+
+int m0 () {
+  int x;
+  int o;
+  enum inductive_bool switch_1;
+  enum inductive_bool switch_2;
+  
+  x = 1;
+  switch (x) {
+    case TRUE: {
+      switch_2 = 1;
+      break;
+    }
+    case FALSE: {
+      switch_2 = 2;
+      break;
+    }
+  };
+  switch (x) {
+    case TRUE: {
+      switch_1 = switch_2;
+      break;
+    }
+    case FALSE: {
+      switch_1 = 3;
+      break;
+    }
+  };
+  o = switch_1;
+  return o;
+}
+
+int main0 () {
+  int aux__1;
+  int o;
+  int call_1;
+  
+  call_1 = m0();
+  aux__1 = call_1;
+  o = aux__1;
+  return o;
+}
+
+int main (int argc, char* argv[]) {
+  int res;
+  
+  while (1) {
+    res = main0();
+    printf("%d\n", res);
+    fflush(0);
+    usleep(333333);
+  };
+}

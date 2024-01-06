@@ -1,0 +1,9 @@
+node f() returns (o:bool);
+let
+  o = true fby false fby o;
+tel
+
+node main0 () returns (o:bool);
+let
+  o = f();
+tel

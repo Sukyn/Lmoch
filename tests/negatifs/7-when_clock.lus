@@ -1,0 +1,6 @@
+node main0 (c: bool) returns (o: int);
+var x: int;
+let
+  x = 0 when True(c);
+  o = x;
+tel

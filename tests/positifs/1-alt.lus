@@ -1,0 +1,4 @@
+node main0 () returns (o:int);
+let
+  o = 4 fby 2 fby o;
+tel

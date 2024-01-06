@@ -1,0 +1,9 @@
+type t = A | B
+
+node main0 () returns (o : t);
+let
+  o = A fby
+        (merge o
+          (A -> B when A(o))
+          (B -> A when B(o)));
+tel

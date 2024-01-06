@@ -1,0 +1,4 @@
+node fibonacci() returns (fib: int);
+let        
+  fib = 1 fby (pre(fib) + fib);                     
+tel
