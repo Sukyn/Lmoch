@@ -1,6 +1,4 @@
 OCAMLBUILD= ocamlbuild -no-links -classic-display \
-		-cflags "-I ../../lib/aez-0.3" \
-		-lflags "-I ../../lib/aez-0.3" \
 		-tags debug,annot
 
 TARGET=native
